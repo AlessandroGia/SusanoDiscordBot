@@ -4,11 +4,14 @@ WORKDIR /app
 
 RUN pip install poetry
 
-COPY pyproject.toml poetry.lock /app/
+COPY pyproject.toml /app/
 
-RUN poetry install --without dev
 
-COPY src /app/src
-COPY .env /app/.env
+RUN poetry install
 
-CMD ["poetry", "run", "python", "src/main.py"]
+COPY src ./src
+COPY main.py .
+COPY config.py .
+COPY .env .
+
+CMD ["poetry", "run", "python", "-u", "main.py"]

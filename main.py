@@ -15,6 +15,7 @@ class SusanoMusicBot(commands.Bot):
         super().__init__(
             command_prefix='!',
             intents=Intents.all(),
+            status=Status.do_not_disturb,
             activity=Activity(
                 type=ActivityType.listening,
                 name='Broken music'
@@ -28,10 +29,10 @@ class SusanoMusicBot(commands.Bot):
             password=os.getenv('LAVA_PASSWORD'),
         )
 
-    def __load_cogs(self) -> None:
-        for filename in os.listdir('cogs'):
+    async def __load_cogs(self) -> None:
+        for filename in os.listdir(os.path.join(os.path.dirname(__file__), 'src', 'cogs')):
             if filename.endswith('.py') and filename != '__init__.py':
-                self.load_extension(f'src.cogs.{filename[:-3]}')
+                await self.load_extension(f'src.cogs.{filename[:-3]}')
 
     async def __connect_nodes(self, nodes: wavelink.Node) -> None:
         if isinstance(nodes, wavelink.Node):
@@ -55,7 +56,7 @@ class SusanoMusicBot(commands.Bot):
     async def setup_hook(self) -> None:
         node = self.__create_node()
         await self.__connect_nodes(node)
-        self.__load_cogs()
+        await self.__load_cogs()
 
 
 if __name__ == '__main__':

@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Poetry (SusanoMusicBot)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (SusanoMusicBot)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (SusanoDiscordBot)" project-jdk-type="Python SDK" />
 </project>
