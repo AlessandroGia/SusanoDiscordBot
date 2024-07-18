@@ -1,10 +1,6 @@
 from discord.app_commands import AppCommandError
 
 
-class NoTracksInQueueError(AppCommandError):
-    pass
-
-
 class OutOfIndexQueue(AppCommandError):
     pass
 
@@ -14,4 +10,8 @@ class AlreadyLoop(AppCommandError):
 
 
 class AlreadyLoopAll(AppCommandError):
+    pass
+
+
+class QueueEmpty(AppCommandError):
     pass

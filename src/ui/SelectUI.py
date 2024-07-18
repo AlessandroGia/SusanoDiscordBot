@@ -1,7 +1,8 @@
 from discord import Interaction
 from discord._types import ClientT
 from discord.ui import Button, View, Select, Item
-from typing import Callable, Coroutine, Any
+from typing import Callable, Coroutine, Any, Optional
+from src.voice.VoiceGuild import VoiceState
 
 import wavelink
 import discord
@@ -15,12 +16,13 @@ class SelectTrackDropdown(Select):
     def __init__(
             self,
             interaction: discord.Interaction,
-            play: Callable[[discord.Interaction, wavelink.Search],  Coroutine[Any, Any, None]],
+            voice_state: VoiceState,
             tracks: list[wavelink.Playable]):
 
         self.__interaction: discord.Interaction = interaction
-        self.__play: Callable[[discord.Interaction, wavelink.Search],  Coroutine[Any, Any, None]] = play
+        self.__voice_state: VoiceState = voice_state
         self.__tracks: list[wavelink.Playable] = tracks
+        self.__embed: EmbedFactory = EmbedFactory()
 
         _format = lambda label: label[:96] + "..." if len(label) >= 100 else label
         options: list[discord.SelectOption] = [
@@ -36,7 +38,7 @@ class SelectTrackDropdown(Select):
         ]
 
         super().__init__(
-            placeholder='Seleziona una canzone',
+            placeholder=f'{len(tracks)} tracce trovate...',
             min_values=1,
             max_values=len(tracks),
             options=options
@@ -51,17 +53,23 @@ class SelectTrackDropdown(Select):
             track for track in self.__tracks if track.identifier in self.values
         ]
         await self.__interaction.delete_original_response()
-        await self.__play(interaction, tracks)
+        track_playing, tracks_queue = await self.__voice_state.play(interaction, tracks)
+
+        await self.__voice_state.feedback_play_command(
+            interaction,
+            track_playing,
+            tracks_queue
+        )
 
 
 class SelectTrackView(View):
     def __init__(
             self,
             interaction: discord.Interaction,
-            play: Callable[[discord.Interaction, wavelink.Search],  Coroutine[Any, Any, None]],
+            voice_state: VoiceState,
             tracks: list[wavelink.Playable]):
         super().__init__()
-        self.add_item(SelectTrackDropdown(interaction, play, tracks))
+        self.add_item(SelectTrackDropdown(interaction, voice_state, tracks))
         self.__embed = EmbedFactory()
 
     def __send_error(self, interaction: Interaction, error: str):
@@ -75,5 +83,6 @@ class SelectTrackView(View):
         if isinstance(error, IllegalState):
             await self.__send_error(interaction, 'Comando non valido')
         else:
+            print(f"SelectTrackView.on_error error: {error}")
             await self.__send_error(interaction, 'Errore sconosciuto')
 

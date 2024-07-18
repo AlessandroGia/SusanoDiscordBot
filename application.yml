@@ -15,6 +15,8 @@ plugins:
       - MUSIC
       - ANDROID
       - WEB
+      - TVHTML5EMBEDDED
+      - MEDIA_CONNECT
 
     # You can configure individual clients with the following.
     # Any options or clients left unspecified will use their default values
@@ -24,7 +26,7 @@ plugins:
 
 lavalink:
   plugins:
-     - dependency: "dev.lavalink.youtube:youtube-plugin:1.3.0"
+     - dependency: "dev.lavalink.youtube:youtube-plugin:1.4.0"
 #    - dependency: "com.github.example:example-plugin:1.0.0" # required, the coordinates of your plugin
 #      repository: "https://maven.example.com/releases" # optional, defaults to the Lavalink releases repository by default
 #      snapshot: false # optional, defaults to false, used to tell Lavalink to use the snapshot repository instead of the release repository
@@ -65,10 +67,10 @@ lavalink:
     youtubeSearchEnabled: true
     soundcloudSearchEnabled: true
     gc-warnings: true
-    ratelimit:
-      #ipBlocks: ["1.0.0.0/8", "..."] # list of ip blocks
+    #ratelimit:
+      #ipBlocks: ["10.0.0.0/16"] # list of ip blocks
       #excludedIps: ["...", "..."] # ips which should be explicit excluded from usage by lavalink
-      strategy: "RotatingNanoSwitch" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
+      #strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
       #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
       #retryLimit: -1 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
     #youtubeConfig: # Required for avoiding all age restrictions by YouTube, some restricted videos still can be played without.

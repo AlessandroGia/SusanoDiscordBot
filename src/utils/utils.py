@@ -9,3 +9,6 @@ def convert_time(ms: int) -> str:
     else:
         return "∞"
 
+
+def truncate_string(string: str, max_length: int) -> str:
+    return string[:max_length - 4] + "..." if len(string) >= max_length else string

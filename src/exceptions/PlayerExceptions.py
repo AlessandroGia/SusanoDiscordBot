@@ -22,13 +22,3 @@ class NoCurrentTrack(AppCommandError):
 
 # QUEUE
 
-class AlreadyLoop(AppCommandError):
-    pass
-
-
-class AlreadyLoopAll(AppCommandError):
-    pass
-
-
-class QueueEmpty(AppCommandError):
-    pass

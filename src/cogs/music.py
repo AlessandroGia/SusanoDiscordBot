@@ -2,12 +2,13 @@ import discord
 from discord import Object, Interaction, app_commands, ext
 from discord.ext import commands
 
-from src.exceptions.PlayerExceptions import NoCurrentTrack, AlreadyPaused, AlreadyResumed, IllegalState, QueueEmpty
+
 from src.ui import QueueUI
 from src.ui.SelectUI import SelectTrackView
 
 from src.exceptions.Generic import Generic
-from src.exceptions.QueueException import *
+from src.exceptions.PlayerExceptions import NoCurrentTrack, AlreadyPaused, AlreadyResumed, IllegalState
+from src.exceptions.QueueException import QueueEmpty, AlreadyLoop, AlreadyLoopAll
 from src.exceptions.TrackPlayerExceptions import *
 from src.exceptions.VoiceChannelExceptions import *
 
@@ -30,16 +31,38 @@ class Music(ext.commands.Cog):
         print(f"Nodo {payload.node!r} is ready!")
 
     @commands.Cog.listener()
-    async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
-        await self.__VoiceState.display_now_playing(
-            payload.player.guild.id,
-            payload
+    async def on_wavelink_track_stuck(self, payload: wavelink.TrackStuckEventPayload) -> None:
+        await self.__send_error(
+            payload,
+            'Canzone bloccata, passando alla prossima',
+            delete_after=5
         )
+        await self.__VoiceState.play_next(payload.player.guild.id)
+
+    @commands.Cog.listener()
+    async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload) -> None:
+        ...
+
+    @commands.Cog.listener()
+    async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
+        if "first" not in dir(payload.track.extras):
+            channel: discord.TextChannel = await self.__bot.fetch_channel(
+                self.__VoiceState.get_channel_id(payload.player.guild.id)
+            )
+
+            message: discord.Message = await channel.send(
+                embed=self.__embed.now_playing_with_player(payload.player)
+            )
+
+            self.__VoiceState.set_last_message(
+                payload.player.guild.id,
+                message
+            )
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
         if payload.player:
-            print('Gunner')
+            await self.__VoiceState.clear_now_playing(payload.player.guild.id)
             await self.__VoiceState.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
@@ -52,6 +75,7 @@ class Music(ext.commands.Cog):
             ephemeral=ephemeral,
             delete_after=delete_after
         )
+
     # --- --- --- --- --- --- #
     #                         #
     # --- PLAYER COMMANDS --- #
@@ -77,6 +101,7 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def leave(self, interaction: Interaction):
+        await self.__VoiceState.clear_now_playing(interaction.guild_id)
         await self.__VoiceState.leave(interaction)
         await self.__send_message(
             interaction,
@@ -87,7 +112,6 @@ class Music(ext.commands.Cog):
     @app_commands.command(
         name='play',
         description='Fa partire una canzone'
-
     )
     @app_commands.describe(
         search='Url o Nome della canzone da cercare',
@@ -97,11 +121,21 @@ class Music(ext.commands.Cog):
         tracks: wavelink.Search = await wavelink.Playable.search(search)
         if isinstance(tracks, list) and len(tracks) > 1:
             await interaction.response.send_message(
-                view=SelectTrackView(interaction, self.__VoiceState.play, tracks),
+                'Seleziona una canzone...',
+                view=SelectTrackView(
+                    interaction,
+                    self.__VoiceState,
+                    tracks
+                ),
                 ephemeral=True
             )
         else:
-            await self.__VoiceState.play(interaction, tracks)
+            track_playing, tracks_queue = await self.__VoiceState.play(interaction, tracks)
+            await self.__VoiceState.feedback_play_command(
+                interaction,
+                track_playing,
+                tracks_queue
+            )
 
     @app_commands.command(
         name='skip',
@@ -128,6 +162,7 @@ class Music(ext.commands.Cog):
             'Canzone in pausa',
             delete_after=5
         )
+        await self.__VoiceState.update_now_playing(interaction.guild_id)
 
     @app_commands.command(
         name='resume',
@@ -141,6 +176,7 @@ class Music(ext.commands.Cog):
             'Canzone ripresa',
             delete_after=5
         )
+        await self.__VoiceState.update_now_playing(interaction.guild_id)
 
     # --- --- --- --- --- ---#
     #                        #
@@ -149,12 +185,31 @@ class Music(ext.commands.Cog):
     # --- --- --- --- --- ---#
 
     @app_commands.command(
+        name='reset',
+        description='Resetta la coda delle canzoni'
+    )
+    @check_voice_channel()
+    async def reset(self, interaction: Interaction):
+        await self.__VoiceState.reset(interaction)
+        await interaction.response.send_message(
+            embed=self.__embed.send('Coda resettata'),
+            ephemeral=True,
+            delete_after=5
+        )
+
+    @app_commands.command(
         name='loop',
         description='Ripete la canzone attuale'
     )
     @check_voice_channel()
     async def loop(self, interaction: Interaction):
-        await self.__VoiceState.loop(interaction)
+        loop = await self.__VoiceState.loop(interaction)
+        await interaction.response.send_message(
+            embed=self.__embed.send(f"Loop {"attivato" if loop else "disattivato"}" ),
+            ephemeral=True,
+            delete_after=5
+        )
+        await self.__VoiceState.update_now_playing(interaction.guild_id)
 
     @app_commands.command(
         name='loop_all',
@@ -162,7 +217,13 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def loop_all(self, interaction: Interaction):
-        await self.__VoiceState.loop_all(interaction)
+        loop = await self.__VoiceState.loop_all(interaction)
+        await interaction.response.send_message(
+            embed=self.__embed.send(f"Loop all {"attivato" if loop else "disattivato"}" ),
+            ephemeral=True,
+            delete_after=5
+        )
+        await self.__VoiceState.update_now_playing(interaction.guild_id)
 
     @app_commands.command(
         name='shuffle',
@@ -178,19 +239,6 @@ class Music(ext.commands.Cog):
         )
 
     @app_commands.command(
-        name='reset',
-        description='Resetta la coda delle canzoni'
-    )
-    @check_voice_channel()
-    async def reset(self, interaction: Interaction):
-        await self.__VoiceState.reset(interaction)
-        await self.__send_message(
-            interaction,
-            'Coda resettata',
-            delete_after=5
-        )
-
-    @app_commands.command(
         name='remove',
         description='Rimuove una canzone dalla coda'
     )
@@ -199,7 +247,12 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def remove(self, interaction: Interaction, index: int):
-        await self.__VoiceState.remove(interaction, index)
+        track = await self.__VoiceState.remove(interaction, index)
+        await interaction.response.send_message(
+            embed=self.__embed.send(f"Rimosso {track.title} dalla coda"),
+            ephemeral=True,
+            delete_after=5
+        )
 
     @app_commands.command(
         name='swap',
@@ -211,8 +264,12 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def swap(self, interaction: Interaction, index1: int, index2: int):
-        await self.__VoiceState.swap(interaction, index1, index2)
-
+        tracks = await self.__VoiceState.swap(interaction, index1, index2)
+        await interaction.response.send_message(
+            embed=self.__embed.send(f"Scambiato {tracks[0].title} con {tracks[1].title}"),
+            ephemeral=True,
+            delete_after=5
+        )
 
     @app_commands.command(
         name='queue',
@@ -220,7 +277,16 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def queue(self, interaction: Interaction):
-        await self.__VoiceState.queue(interaction)
+        interaction_queue, followup_queues = await self.__VoiceState.queue(interaction)
+
+        await interaction.response.send_message(
+            embed=self.__embed.queue(interaction_queue, 1, len(followup_queues) + 1),
+        )
+
+        for i, queue in enumerate(followup_queues, 2):
+            await interaction.channel.send(
+                embed=self.__embed.queue(queue, i, len(followup_queues) + 1)
+            )
 
     # --- CHECKS --- #
 
@@ -301,6 +367,7 @@ class Music(ext.commands.Cog):
 
     # --- QUEUE ERROR HANDLING --- #
 
+    @queue.error
     @remove.error
     @swap.error
     @reset.error

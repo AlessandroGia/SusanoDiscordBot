@@ -1,3 +1,5 @@
+from typing import Optional
+
 import discord
 import wavelink
 from discord import Interaction
@@ -7,8 +9,8 @@ from src.ui.QueueUI import QueueView
 from src.utils.embed import EmbedFactory
 from src.voice.guild_data.GuildMusicData import GuildMusicData
 
-from src.exceptions.PlayerExceptions import AlreadyPaused, AlreadyResumed, NoCurrentTrack, AlreadyLoop, AlreadyLoopAll, \
-    QueueEmpty
+from src.exceptions.PlayerExceptions import AlreadyPaused, AlreadyResumed, NoCurrentTrack
+from src.exceptions.QueueException import AlreadyLoop, AlreadyLoopAll, QueueEmpty
 
 
 class VoicePlayer:
@@ -16,39 +18,63 @@ class VoicePlayer:
         self.__bot: commands.Bot = bot
         self.__embed = EmbedFactory()
 
-    async def display_now_playing(self, guild_state: GuildMusicData, payload: wavelink.TrackStartEventPayload):
-        channel: discord.TextChannel = await self.__bot.fetch_channel(
-            guild_state.channel_id
-        )
-        await channel.send(
-            embed=self.__embed.now_playing(payload.track)
-        )
+    async def clear_now_playing(self, guild_state: GuildMusicData):
+        if isinstance(guild_state.last_message, discord.Interaction):
+            await guild_state.last_message.edit_original_response(
+                embed=self.__embed.finished_playing(
+                    guild_state.player.queue.history[-1]
+                )
+            )
+        else:
+            await guild_state.last_message.edit(
+                embed=self.__embed.finished_playing(
+                    guild_state.player.queue.history[-1]
+                )
+            )
+
+    async def update_now_playing(self, guild_state: GuildMusicData):
+        if isinstance(guild_state.last_message, discord.Interaction):
+            await guild_state.last_message.edit_original_response(
+                embed=self.__embed.now_playing_with_player(
+                    guild_state.player,
+                )
+            )
+        else:
+            await guild_state.last_message.edit(
+                embed=self.__embed.now_playing_with_player(
+                    guild_state.player
+                )
+            )
 
     @staticmethod
     async def leave(guild_state: GuildMusicData):
         await guild_state.player.disconnect(force=True)
 
-    async def play(self, guild_state: GuildMusicData, interaction: Interaction, tracks: wavelink.Search) -> None:
+    @staticmethod
+    async def play(guild_state: GuildMusicData, interaction: Interaction, tracks: wavelink.Search) -> tuple[Optional[wavelink.Playable], wavelink.Search]:
+        for track in tracks:
+            track.extras = {
+                'requester_name': interaction.user.display_name,
+                'requester_avatar': interaction.user.display_avatar.url
+            }
         if not guild_state.player.current:
-            await guild_state.player.play(tracks.pop(0))
-            if isinstance(tracks, wavelink.Playlist) or len(tracks) > 1:
-                await interaction.response.send_message(
-                    embed=self.__embed.added_to_queue(tracks, interaction.user)
-                )
+            track = tracks.pop(0)
+            if tracks:
                 guild_state.player.queue.put(tracks)
-            else:
-                await interaction.response.send_message(
-                    embed=self.__embed.added_to_queue([guild_state.player.current], interaction.user),
-                    ephemeral=True,
-                    delete_after=5
-                )
-        else:
-            await interaction.response.send_message(
-                embed=self.__embed.added_to_queue(tracks, interaction.user)
-            )
-            guild_state.player.queue.put(tracks)
+            track.extras = {
+                'first': True,
+                'requester_name': interaction.user.display_name,
+                'requester_avatar': interaction.user.display_avatar.url
+            }
 
-    async def skip(self, guild_state: GuildMusicData):
+            await guild_state.player.play(track)
+        else:
+            track = None
+            guild_state.player.queue.put(tracks)
+        return track, tracks
+
+    @staticmethod
+    async def skip(guild_state: GuildMusicData):
         if not await guild_state.player.skip():
             raise NoCurrentTrack
 
@@ -74,45 +100,39 @@ class VoicePlayer:
 
         await guild_state.player.pause(False)
 
-    async def loop(self, guild_state: GuildMusicData, interaction: Interaction):
+    @staticmethod
+    async def loop(guild_state: GuildMusicData) -> bool:
         queue = guild_state.player.queue
 
         if not guild_state.player.current:
             raise NoCurrentTrack
 
-        if queue.mode == "loop_all":
+        if queue.mode == wavelink.QueueMode.loop_all:
             raise AlreadyLoopAll
 
-        if queue.mode == "normal":
-            queue.mode = "loop"
-            await interaction.response.send_message(
-                embed=self.__embed.send("Loop attivito")
-            )
-        elif queue.mode == "loop":
-            queue.mode = "normal"
-            await interaction.response.send_message(
-                embed=self.__embed.send("Loop disattivato")
-            )
+        if queue.mode == wavelink.QueueMode.normal:
+            queue.mode = wavelink.QueueMode.loop
+            return True
+        elif queue.mode == wavelink.QueueMode.loop:
+            queue.mode = wavelink.QueueMode.normal
+            return False
 
-    async def loop_all(self, guild_state: GuildMusicData, interaction: Interaction):
+    @staticmethod
+    async def loop_all(guild_state: GuildMusicData):
         queue = guild_state.player.queue
 
         if not guild_state.player.current:
             raise NoCurrentTrack
 
-        if queue.mode == "loop":
-            raise AlreadyLoopAll
+        if queue.mode == wavelink.QueueMode.loop:
+            raise AlreadyLoop
 
-        if queue.mode == "normal":
-            queue.mode = "loop_all"
-            await interaction.response.send_message(
-                embed=self.__embed.send("Loop All attivito")
-            )
-        elif queue.mode == "loop_all":
-            queue.mode = "normal"
-            await interaction.response.send_message(
-                embed=self.__embed.send("Loop All disattivato")
-            )
+        if queue.mode == wavelink.QueueMode.normal:
+            queue.mode = wavelink.QueueMode.loop_all
+            return True
+        elif queue.mode == wavelink.QueueMode.loop_all:
+            queue.mode = wavelink.QueueMode.normal
+            return False
 
     @staticmethod
     async def shuffle(guild_state: GuildMusicData):
@@ -132,7 +152,8 @@ class VoicePlayer:
 
         queue.reset()
 
-    async def remove(self, guild_state: GuildMusicData, interaction: Interaction, index: int):
+    @staticmethod
+    async def remove(guild_state: GuildMusicData, index: int) -> wavelink.Playable:
         queue = guild_state.player.queue
 
         if queue.is_empty:
@@ -144,12 +165,10 @@ class VoicePlayer:
         track = queue.peek(index)
         queue.delete(index)
 
-        await interaction.response.send_message(
-            embed=self.__embed.send(f"Rimosso {track.title} dalla coda"),
-            delete_after=5
-        )
+        return track
 
-    async def swap(self, guild_state: GuildMusicData, interaction: Interaction, index1: int, index2: int):
+    @staticmethod
+    async def swap(guild_state: GuildMusicData, index1: int, index2: int) -> tuple[wavelink.Playable, wavelink.Playable]:
         queue = guild_state.player.queue
 
         if queue.is_empty:
@@ -159,27 +178,25 @@ class VoicePlayer:
             raise IndexError
 
         tracks = queue.peek(index1), queue.peek(index2)
-
         queue.swap(index1, index2)
 
-        await interaction.response.send_message(
-            embed=self.__embed.send(f"Scambiato {tracks[0].title} con {tracks[1].title}"),
-            delete_after=5
-        )
+        return tracks
 
-    async def queue(self, guild_state: GuildMusicData, interaction: Interaction):
-        queue = guild_state.player.queue
+    @staticmethod
+    async def queue(guild_state: GuildMusicData) -> tuple[str, list[str]]:
+        queues = []
+        current = ""
+        for i, song in enumerate(guild_state.player.queue):
+            queue_str = f"{i + 1}. [{song.title}]({song.uri})\n"
+            if len(current) + len(queue_str) <= 4090:
+                current += queue_str
+            else:
+                queues.append(current)
+                current = queue_str
+        if current:
+            queues.append(current)
+        return queues[0], queues[1:]
 
-        if queue.is_empty:
-            raise QueueEmpty
-
-        view = QueueView(interaction, queue)
-
-        await interaction.response.send_message(
-            embed=self.__embed.send("Queue"),
-            view=view,
-            ephemeral=True
-        )
 
     @staticmethod
     async def play_next(guild_state: GuildMusicData):

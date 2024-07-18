@@ -2,6 +2,20 @@ import discord
 import wavelink
 from discord import Interaction
 
+from src.utils.embed import EmbedFactory
+
+
+class ButtonSwitch(discord.ui.Button):
+    def __init__(self, update_message: callable):
+        super().__init__(
+            label='Next',
+            style=discord.ButtonStyle.primary
+        )
+        self.__update_message = update_message
+
+    async def callback(self, interaction: discord.Interaction):
+        self.__update_message(interaction)
+
 
 class QueueView(discord.ui.View):
     def __init__(self, interaction: Interaction, queue: wavelink.Queue, items_per_page: int = 2):
@@ -10,45 +24,43 @@ class QueueView(discord.ui.View):
         self.__queue: wavelink.Queue = queue
         self.__items_per_page: int = items_per_page
         self.__current_page = 0
-        self.__update_buttons()
+        self.__embed = EmbedFactory()
+        self.update_buttons()
 
-    def __update_buttons(self):
-        self.clear_items()
-        if self.__current_page > 0:
-            self.add_item(discord.ui.Button(label='Previous', style=discord.ButtonStyle.primary, custom_id='previous'))
-        if (self.__current_page + 1) * self.__items_per_page < self.__queue.count:
-            self.add_item(discord.ui.Button(label='Next', style=discord.ButtonStyle.primary, custom_id='next'))
+    def update_buttons(self):
 
-    async def __update_message(self):
-        start = self.__current_page * self.__items_per_page
-        end = start + self.__items_per_page
-        queue_page = self.__queue[start:end]
-        queue_str = ""
-        for i, song in enumerate(queue_page, start=start):
-            queue_str += f"{i+1}. {song['title']} - [Link]({song['webpage_url']})\n"
+        print(self.__current_page)
+        if self.__current_page == 0:
+            self.previous_button.disabled = True
+        else:
+            self.previous_button.disabled = False
 
-        embed = discord.Embed(
-            title=f"Coda di Riproduzione - Pagina {self.__current_page + 1}",
-            description=queue_str,
-            color=discord.Color.blue()
+        if self.__current_page == len(self.__queue) // self.__items_per_page:
+            self.next_button.disabled = True
+        else:
+            self.next_button.disabled = False
+
+    async def __update_message(self, interaction: Interaction):
+        await self.__interaction.delete_original_response()
+        await interaction.response.send_message(
+            embed=self.__embed.queue(
+                self.__queue,
+                self.__current_page + 1,
+                self.__items_per_page
+            ),
+            view=self,
+            ephemeral=True
         )
-        embed.set_footer(
-            text=f"Pagina {self.__current_page + 1} di {len(self.__queue) // self.__items_per_page + 1}"
-        )
-        await self.__interaction.message.edit(
-            embed=embed,
-            view=self
-        )
+        self.__interaction = interaction
 
-    @discord.ui.button(label='Previous', style=discord.ButtonStyle.primary, custom_id='previous')
+    @discord.ui.button(label='Previous', style=discord.ButtonStyle.primary)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.update_buttons()
         self.__current_page -= 1
-        self.__update_buttons()
-        await self.__update_message()
+        await self.__update_message(interaction)
 
-    @discord.ui.button(label='Next', style=discord.ButtonStyle.primary, custom_id='next')
+    @discord.ui.button(label='Next', style=discord.ButtonStyle.primary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.update_buttons()
         self.__current_page += 1
-        self.__update_buttons()
-        await self.__update_message()
-
+        await self.__update_message(interaction)
