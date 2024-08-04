@@ -107,7 +107,7 @@ class VoicePlayer:
             raise NoCurrentTrack
 
         if flag := not player.queue.is_empty:
-            player.queue.reset()
+            player.queue.clear()
 
         await player.skip()
 
@@ -164,7 +164,7 @@ class VoicePlayer:
         if queue.is_empty:
             raise QueueEmpty
 
-        queue.reset()
+        queue.clear()
 
     @staticmethod
     async def remove(guild_state: GuildMusicData, index: int) -> wavelink.Playable:
