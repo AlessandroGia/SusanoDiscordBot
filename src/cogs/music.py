@@ -119,6 +119,8 @@ class Music(ext.commands.Cog):
     @check_voice_channel()
     async def play(self, interaction: Interaction, search: str):
         tracks: wavelink.Search = await wavelink.Playable.search(search)
+        if not tracks:
+            raise TrackNotFoundError
         if isinstance(tracks, list) and len(tracks) > 1:
             await interaction.response.send_message(
                 'Seleziona una canzone...',
