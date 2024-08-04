@@ -3,11 +3,8 @@ from discord import Object, Interaction, app_commands, ext
 from discord.ext import commands
 
 
-
-from src.ui import QueueUI
 from src.ui.SelectUI import SelectTrackView
 
-from src.exceptions.Generic import Generic
 from src.exceptions.PlayerExceptions import NoCurrentTrack, AlreadyPaused, AlreadyResumed, IllegalState
 from src.exceptions.QueueException import QueueEmpty, AlreadyLoop, AlreadyLoopAll
 from src.exceptions.TrackPlayerExceptions import *
