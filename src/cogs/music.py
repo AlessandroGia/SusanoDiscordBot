@@ -32,16 +32,25 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_stuck(self, payload: wavelink.TrackStuckEventPayload) -> None:
-        await self.__send_error(
-            payload,
-            'Canzone bloccata, passando alla prossima',
-            delete_after=5
-        )
-        await self.__VoiceState.play_next(payload.player.guild.id)
+        if payload.player and payload.player.connected:
+            print("track stuck:", payload.threshold, payload.track.title)
+            await self.__send_error(
+                payload,
+                'Canzone bloccata, passando alla prossima',
+                delete_after=5
+            )
+            await self.__VoiceState.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
     async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload) -> None:
-        ...
+        if payload.player and payload.player.connected:
+            print("track exception:", payload.exception, payload.track.title)
+            await self.__send_error(
+                payload,
+                'Errore durante la riproduzione della canzone, passando alla prossima',
+                delete_after=5
+            )
+            await self.__VoiceState.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:

@@ -11,3 +11,7 @@ class NoCurrentTrackError(AppCommandError):
 
 class InvalidSpotifyURL(AppCommandError):
     pass
+
+
+class TrackException(AppCommandError):
+    pass
