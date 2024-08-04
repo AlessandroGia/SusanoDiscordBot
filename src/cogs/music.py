@@ -25,8 +25,6 @@ class Music(ext.commands.Cog):
         self.__VoiceState = VoiceState(bot)
         self.__embed = EmbedFactory()
 
-
-
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload) -> None:
         print(f"Nodo {payload.node!r} is ready!")

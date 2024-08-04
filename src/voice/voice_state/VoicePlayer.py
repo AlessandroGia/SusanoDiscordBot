@@ -5,7 +5,6 @@ import wavelink
 from discord import Interaction
 from discord.ext import commands
 
-from src.ui.QueueUI import QueueView
 from src.utils.embed import EmbedFactory
 from src.voice.guild_data.GuildMusicData import GuildMusicData
 
