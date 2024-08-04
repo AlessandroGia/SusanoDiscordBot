@@ -45,7 +45,7 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
-        if "first" not in dir(payload.track.extras):
+        if payload.player and payload.player.connected and "first" not in dir(payload.track.extras):
             channel: discord.TextChannel = await self.__bot.fetch_channel(
                 self.__VoiceState.get_channel_id(payload.player.guild.id)
             )
