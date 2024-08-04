@@ -25,6 +25,9 @@ class SelectTrackDropdown(Select):
         self.__embed: EmbedFactory = EmbedFactory()
 
         _format = lambda label: label[:96] + "..." if len(label) >= 100 else label
+
+        tracks = self.__remove_duplicates(tracks[:25])
+
         options: list[discord.SelectOption] = [
             discord.SelectOption(
                 label=_format(
@@ -34,7 +37,7 @@ class SelectTrackDropdown(Select):
                     f"{track.album.name + " " if track.album.name else ""}{convert_time(track.length)}"
                 ),
                 value=track.identifier
-            ) for track in tracks[:25]
+            ) for track in tracks
         ]
 
         super().__init__(
@@ -43,6 +46,16 @@ class SelectTrackDropdown(Select):
             max_values=len(tracks),
             options=options
         )
+
+    @staticmethod
+    def __remove_duplicates(tracks: list[wavelink.Playable]) -> list[wavelink.Playable]:
+        identifiers = set()
+        unique_tracks = []
+        for track in tracks:
+            if track.identifier not in identifiers:
+                identifiers.add(track.identifier)
+                unique_tracks.append(track)
+        return unique_tracks
 
     async def interaction_check(self, interaction: Interaction[ClientT], /) -> bool:
         return not self.disabled
