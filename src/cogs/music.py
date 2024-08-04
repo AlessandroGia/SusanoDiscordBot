@@ -189,6 +189,19 @@ class Music(ext.commands.Cog):
         )
         await self.__VoiceState.update_now_playing(interaction.guild_id)
 
+    @app_commands.command(
+        name='stop',
+        description='Ferma la canzone e svuota la coda di riproduzione'
+    )
+    @check_voice_channel()
+    async def stop(self, interaction: Interaction):
+        flag = await self.__VoiceState.stop(interaction)
+        await self.__send_message(
+            interaction,
+            f'Canzone fermata {"e coda di riproduzione svuotata" if flag else ""}',
+            delete_after=5
+        )
+
     # --- --- --- --- --- ---#
     #                        #
     # --- QUEUE COMMANDS --- #
@@ -197,7 +210,7 @@ class Music(ext.commands.Cog):
 
     @app_commands.command(
         name='reset',
-        description='Resetta la coda delle canzoni'
+        description='Svuota la coda di riproduzione'
     )
     @check_voice_channel()
     async def reset(self, interaction: Interaction):
@@ -238,7 +251,7 @@ class Music(ext.commands.Cog):
 
     @app_commands.command(
         name='shuffle',
-        description='Mescola la coda delle canzoni'
+        description='Mescola la coda di riproduzione'
     )
     @check_voice_channel()
     async def shuffle(self, interaction: Interaction):
@@ -251,7 +264,7 @@ class Music(ext.commands.Cog):
 
     @app_commands.command(
         name='remove',
-        description='Rimuove una canzone dalla coda'
+        description='Rimuove una canzone dalla coda di riproduzione'
     )
     @app_commands.describe(
         index='Indice della canzone da rimuovere'
@@ -260,14 +273,14 @@ class Music(ext.commands.Cog):
     async def remove(self, interaction: Interaction, index: int):
         track = await self.__VoiceState.remove(interaction, index)
         await interaction.response.send_message(
-            embed=self.__embed.send(f"Rimosso {track.title} dalla coda"),
+            embed=self.__embed.send(f"Rimosso {track.title} dalla coda di riproduzione"),
             ephemeral=True,
             delete_after=5
         )
 
     @app_commands.command(
         name='swap',
-        description='Scambia due canzoni nella coda'
+        description='Scambia due canzoni nella coda di riproduzione'
     )
     @app_commands.describe(
         index1='Indice della prima canzone',
@@ -284,7 +297,7 @@ class Music(ext.commands.Cog):
 
     @app_commands.command(
         name='queue',
-        description='Mostra la coda delle canzoni'
+        description='Mostra la coda di riproduzione'
     )
     @check_voice_channel()
     async def queue(self, interaction: Interaction):
@@ -367,6 +380,7 @@ class Music(ext.commands.Cog):
             await self.__send_error(interaction, 'Errore sconosciuto')
 
     @skip.error
+    @stop.error
     async def skip_error(self, interaction: Interaction, error: ext.commands.CommandError):
         if not await self.__check_channel(interaction, error):
             pass

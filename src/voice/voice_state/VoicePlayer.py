@@ -100,6 +100,21 @@ class VoicePlayer:
         await guild_state.player.pause(False)
 
     @staticmethod
+    async def stop(guild_state: GuildMusicData) -> bool:
+        player: wavelink.Player = guild_state.player
+
+        if not player.current:
+            raise NoCurrentTrack
+
+        if flag := not player.queue.is_empty:
+            player.queue.reset()
+
+        await player.skip()
+
+        return flag
+
+
+    @staticmethod
     async def loop(guild_state: GuildMusicData) -> bool:
         queue = guild_state.player.queue
 

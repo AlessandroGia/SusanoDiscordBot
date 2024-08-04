@@ -122,6 +122,12 @@ class VoiceState:
         else:
             raise IllegalState
 
+    async def stop(self, interaction: Interaction) -> bool:
+        if guild_state := self.__check_guild_state(interaction.guild_id):
+            return await self.__VoicePlayer.stop(guild_state)
+        else:
+            raise IllegalState
+
     async def loop(self, interaction: Interaction) -> bool:
         if guild_state := self.__check_guild_state(interaction.guild_id):
             return await self.__VoicePlayer.loop(guild_state)
