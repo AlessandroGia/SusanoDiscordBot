@@ -194,7 +194,10 @@ class VoiceState:
 
     async def clear_now_playing(self, guild_id: int):
         if guild_state := self.__check_guild_state(guild_id):
-            await self.__VoicePlayer.clear_now_playing(guild_state)
+            try:
+                await self.__VoicePlayer.clear_now_playing(guild_state)
+            except Exception as e:
+                print("Error in clear_now_playing: ", e)
         else:
             raise IllegalState
 
