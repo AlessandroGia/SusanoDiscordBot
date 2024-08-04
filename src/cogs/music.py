@@ -61,7 +61,7 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
-        if payload.player.connected:
+        if payload.player and payload.player.connected:
             await self.__VoiceState.clear_now_playing(payload.player.guild.id)
             await self.__VoiceState.play_next(payload.player.guild.id)
 
