@@ -3,6 +3,7 @@ from discord import Object, Interaction, app_commands, ext
 from discord.ext import commands
 
 
+
 from src.ui import QueueUI
 from src.ui.SelectUI import SelectTrackView
 
@@ -16,6 +17,7 @@ from src.checks.VoiceChannelChecks import check_voice_channel
 
 import wavelink
 
+from src.utils.utils import check_player
 from src.utils.embed import EmbedFactory
 from src.voice.VoiceGuild import VoiceState
 
@@ -26,13 +28,15 @@ class Music(ext.commands.Cog):
         self.__VoiceState = VoiceState(bot)
         self.__embed = EmbedFactory()
 
+
+
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload) -> None:
         print(f"Nodo {payload.node!r} is ready!")
 
     @commands.Cog.listener()
     async def on_wavelink_track_stuck(self, payload: wavelink.TrackStuckEventPayload) -> None:
-        if payload.player and payload.player.connected:
+        if check_player(payload.player):
             print("track stuck:", payload.threshold, payload.track.title)
             await self.__send_error(
                 payload,
@@ -43,7 +47,7 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload) -> None:
-        if payload.player and payload.player.connected:
+        if check_player(payload.player):
             print("track exception:", payload.exception, payload.track.title)
             await self.__send_error(
                 payload,
@@ -54,7 +58,7 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
-        if payload.player and payload.player.connected and "first" not in dir(payload.track.extras):
+        if check_player(payload.player) and "first" not in dir(payload.track.extras):
             channel: discord.TextChannel = await self.__bot.fetch_channel(
                 self.__VoiceState.get_channel_id(payload.player.guild.id)
             )
@@ -70,13 +74,14 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
-        if payload.player and payload.player.connected:
+        if check_player(payload.player):
             await self.__VoiceState.clear_now_playing(payload.player.guild.id)
             await self.__VoiceState.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
     async def on_wavelink_inactive_player(self, player: wavelink.Player):
-        await self.__VoiceState.inactive_player(player.guild.id)
+        if check_player(player):
+            await self.__VoiceState.inactive_player(player.guild.id)
 
     def __send_message(self, interaction: Interaction, message: str, ephemeral: bool = False, delete_after: int = 0):
         return interaction.response.send_message(

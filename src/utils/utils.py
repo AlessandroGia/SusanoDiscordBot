@@ -1,5 +1,4 @@
 
-
 def convert_time(ms: int) -> str:
     if int(ms) < (24 * 60 * 60 * 1000):
         s, ms = divmod(ms, 1000)
@@ -12,3 +11,7 @@ def convert_time(ms: int) -> str:
 
 def truncate_string(string: str, max_length: int) -> str:
     return string[:max_length - 4] + "..." if len(string) >= max_length else string
+
+
+def check_player(player):
+    return player and player.connected
