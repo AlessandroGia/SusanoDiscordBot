@@ -100,7 +100,7 @@ class VoiceState:
         else:
             raise IllegalState
 
-    async def play(self, interaction: Interaction, tracks: wavelink.Search, force: bool, volume: int, start: int, end: int) -> tuple[Optional[wavelink.Playable], wavelink.Search]:
+    async def play(self, interaction: Interaction, tracks: wavelink.Search, force: bool, volume: int, start: int, end: int, populate: bool) -> tuple[Optional[wavelink.Playable], wavelink.Search]:
         if guild_state := self.__check_guild_state(interaction.guild_id):
             return await self.__VoicePlayer.play(
                 guild_state,
@@ -109,7 +109,8 @@ class VoiceState:
                 force,
                 volume,
                 start,
-                end
+                end,
+                populate
             )
         else:
             raise IllegalState

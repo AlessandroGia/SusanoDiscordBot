@@ -127,13 +127,19 @@ class Music(ext.commands.Cog):
         force='Forza la riproduzione della canzone',
         volume='Volume della canzone',
         start="Posizione di partenza della prima canzone, eg. 23:59:59 o 360",
-        end="Posizione di fine della prima canzone, eg. 23:59:59 o 360"
+        end="Posizione di fine della prima canzone, eg. 23:59:59 o 360",
+        populate="Popola la coda con le canzoni raccomandate"
     )
-    @app_commands.choices(force=[
-        app_commands.Choice(name="Si", value=1),
-    ])
+    @app_commands.choices(
+        force=[
+            app_commands.Choice(name="Si", value=1),
+        ],
+        populate=[
+            app_commands.Choice(name="Si", value=1),
+        ]
+    )
     @check_voice_channel()
-    async def play(self, interaction: Interaction, search: str, force: app_commands.Choice[int] = 0, volume: int = 100, start: str = "0", end: str = None):
+    async def play(self, interaction: Interaction, search: str, force: app_commands.Choice[int] = 0, volume: int = 100, start: str = "0", end: str = None, populate: app_commands.Choice[int] = 0):
         tracks: wavelink.Search = await wavelink.Playable.search(search)
         start = convert_time_to_ms(start)
         end = convert_time_to_ms(end) if end else None
@@ -144,13 +150,14 @@ class Music(ext.commands.Cog):
             await interaction.response.send_message(
                 'Seleziona una canzone...',
                 view=SelectTrackView(
-                    interaction,
                     self.__VoiceState,
+                    interaction,
                     tracks,
                     force.value if force else False,
                     volume,
                     start,
-                    end
+                    end,
+                    populate.value if populate else False
                 ),
                 ephemeral=True
             )
@@ -161,7 +168,8 @@ class Music(ext.commands.Cog):
                 force.value if force else False,
                 volume,
                 start,
-                end
+                end,
+                populate.value if populate else False
             )
             await self.__VoiceState.feedback_play_command(
                 interaction,

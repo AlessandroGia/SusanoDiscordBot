@@ -50,7 +50,7 @@ class VoicePlayer:
         await guild_state.player.disconnect(force=True)
 
     @staticmethod
-    async def play(guild_state: GuildMusicData, interaction: Interaction, tracks: wavelink.Search, force: bool, volume: int, start: int, end: int) -> tuple[Optional[wavelink.Playable], wavelink.Search]:
+    async def play(guild_state: GuildMusicData, interaction: Interaction, tracks: wavelink.Search, force: bool, volume: int, start: int, end: int, populate: bool) -> tuple[Optional[wavelink.Playable], wavelink.Search]:
         for track in tracks:
             track.extras = {
                 'requester_name': interaction.user.display_name,
@@ -76,7 +76,8 @@ class VoicePlayer:
                 track,
                 volume=volume,
                 start=start,
-                end=end
+                end=end,
+                populate=populate
             )
         else:
             track = None
@@ -239,9 +240,6 @@ class VoicePlayer:
         player: wavelink.Player = guild_state.player
         if not player.queue.is_empty:
             await player.play(player.queue.get())
-
-
-    @staticmethod
 
     async def inactive_player(self, guild_state: GuildMusicData):
         await self.leave(guild_state)

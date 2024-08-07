@@ -15,21 +15,23 @@ from src.utils.utils import convert_time
 class SelectTrackDropdown(Select):
     def __init__(
             self,
-            interaction: discord.Interaction,
             voice_state: VoiceState,
+            interaction: discord.Interaction,
             tracks: list[wavelink.Playable],
             force: bool,
             volume: int,
             start: int,
-            end: int):
+            end: int,
+            populate: bool):
 
-        self.__interaction: discord.Interaction = interaction
         self.__voice_state: VoiceState = voice_state
+        self.__interaction: discord.Interaction = interaction
         self.__tracks: list[wavelink.Playable] = tracks
         self.__force: bool = force
         self.__volume: int = volume
         self.__start: int = start
         self.__end: int = end
+        self.__populate: bool = populate
         self.__embed: EmbedFactory = EmbedFactory()
 
         _format = lambda label: label[:96] + "..." if len(label) >= 100 else label
@@ -80,7 +82,8 @@ class SelectTrackDropdown(Select):
             self.__force,
             self.__volume,
             self.__start,
-            self.__end
+            self.__end,
+            self.__populate
         )
 
         await self.__voice_state.feedback_play_command(
@@ -93,23 +96,25 @@ class SelectTrackDropdown(Select):
 class SelectTrackView(View):
     def __init__(
             self,
-            interaction: discord.Interaction,
             voice_state: VoiceState,
+            interaction: discord.Interaction,
             tracks: list[wavelink.Playable],
             force: bool,
             volume: int,
             start: int,
-            end: int):
+            end: int,
+            populate: bool):
         super().__init__()
         self.add_item(
             SelectTrackDropdown(
-                interaction,
                 voice_state,
+                interaction,
                 tracks,
                 force,
                 volume,
                 start,
-                end
+                end,
+                populate
             )
         )
         self.__embed = EmbedFactory()
