@@ -13,6 +13,14 @@ class AlreadyResumed(AppCommandError):
     pass
 
 
+class TrackNotSeekable(AppCommandError):
+    pass
+
+
+class InvalidSeekTime(AppCommandError):
+    pass
+
+
 # TRACK
 
 

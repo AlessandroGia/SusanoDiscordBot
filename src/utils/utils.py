@@ -17,6 +17,7 @@ def convert_time(ms: int) -> str:
 
 
 def convert_time_to_ms(time: str) -> int:
+
     if not regex.fullmatch(time):
         raise InvalidFormat
 
@@ -34,6 +35,12 @@ def convert_time_to_ms(time: str) -> int:
 
     return h(time[0]) + m(time[1]) + s(time[2])
 
+
+def ms_to_time(ms: int) -> str:
+    s, ms = divmod(ms, 1000)
+    m, s = divmod(s, 60)
+    h, m = divmod(m, 60)
+    return f"{h:02d}:{m:02d}:{s:02d}" if h != 0 else f"{m:02d}:{s:02d}"
 
 def truncate_string(string: str, max_length: int) -> str:
     return string[:max_length - 4] + "..." if len(string) >= max_length else string

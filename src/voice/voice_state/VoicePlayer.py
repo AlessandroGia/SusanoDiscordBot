@@ -8,7 +8,7 @@ from discord.ext import commands
 from src.utils.embed import EmbedFactory
 from src.voice.guild_data.GuildMusicData import GuildMusicData
 
-from src.exceptions.PlayerExceptions import AlreadyPaused, AlreadyResumed, NoCurrentTrack
+from src.exceptions.PlayerExceptions import AlreadyPaused, AlreadyResumed, NoCurrentTrack, TrackNotSeekable, InvalidSeekTime
 from src.exceptions.QueueException import AlreadyLoop, AlreadyLoopAll, QueueEmpty
 
 
@@ -132,6 +132,20 @@ class VoicePlayer:
 
         await guild_state.player.set_volume(volume)
 
+    @staticmethod
+    async def seek(guild_state: GuildMusicData, position: int):
+        player: wavelink.Player = guild_state.player
+
+        if not player.current:
+            raise NoCurrentTrack
+
+        if not player.current.is_seekable:
+            raise TrackNotSeekable
+
+        if position < 0 or position >= player.current.length:
+            raise InvalidSeekTime
+
+        await player.seek(position)
 
     @staticmethod
     async def loop(guild_state: GuildMusicData) -> bool:

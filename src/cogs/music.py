@@ -2,10 +2,11 @@ import discord
 from discord import Object, Interaction, app_commands, ext
 from discord.ext import commands
 
-
+from src.exceptions.Generic import InvalidFormat
 from src.ui.SelectUI import SelectTrackView
 
-from src.exceptions.PlayerExceptions import NoCurrentTrack, AlreadyPaused, AlreadyResumed, IllegalState
+from src.exceptions.PlayerExceptions import NoCurrentTrack, AlreadyPaused, AlreadyResumed, IllegalState, \
+    InvalidSeekTime, TrackNotSeekable
 from src.exceptions.QueueException import QueueEmpty, AlreadyLoop, AlreadyLoopAll
 from src.exceptions.TrackPlayerExceptions import *
 from src.exceptions.VoiceChannelExceptions import *
@@ -14,7 +15,7 @@ from src.checks.VoiceChannelChecks import check_voice_channel
 
 import wavelink
 
-from src.utils.utils import check_player, convert_time_to_ms
+from src.utils.utils import check_player, convert_time_to_ms, ms_to_time
 from src.utils.embed import EmbedFactory
 from src.voice.VoiceGuild import VoiceState
 
@@ -126,8 +127,8 @@ class Music(ext.commands.Cog):
         search='Url o Nome della canzone da cercare',
         force='Forza la riproduzione della canzone',
         volume='Volume della canzone',
-        start="Posizione di partenza della prima canzone, eg. 23:59:59 o 360",
-        end="Posizione di fine della prima canzone, eg. 23:59:59 o 360",
+        start="Posizione di partenza della prima canzone, eg. hh:mm:ss oppure in secondi",
+        end="Posizione di fine della prima canzone, eg. hh:mm:ss oppure in secondi",
         populate="Popola la coda con le canzoni raccomandate"
     )
     @app_commands.choices(
@@ -244,6 +245,23 @@ class Music(ext.commands.Cog):
         await self.__send_message(
             interaction,
             f'Volume impostato a {volume}',
+            delete_after=5
+        )
+
+    @app_commands.command(
+        name='seek',
+        description='Cambia la posizione della canzone'
+    )
+    @app_commands.describe(
+        position='Posizione in formato hh:mm:ss oppure in secondi'
+    )
+    @check_voice_channel()
+    async def seek(self, interaction: Interaction, position: str):
+        position = convert_time_to_ms(position)
+        await self.__VoiceState.seek(interaction, position)
+        await self.__send_message(
+            interaction,
+            f'Posizione cambiata a {ms_to_time(position)}',
             delete_after=5
         )
 
@@ -383,6 +401,7 @@ class Music(ext.commands.Cog):
 
     @play.error
     @volume.error
+    @seek.error
     async def play_error(self, interaction: Interaction, error: ext.commands.CommandError):
         if not await self.__check_channel(interaction, error):
             pass
@@ -390,6 +409,12 @@ class Music(ext.commands.Cog):
             await self.__send_error(interaction, 'Canzone non trovata')
         elif isinstance(error, ValueError):
             await self.__send_error(interaction, 'Valore non valido')
+        elif isinstance(error, InvalidSeekTime):
+            await self.__send_error(interaction, 'Posizione non valida')
+        elif isinstance(error, TrackNotSeekable):
+            await self.__send_error(interaction, 'Non puoi cambiare la posizione di questa canzone')
+        elif isinstance(error, InvalidFormat):
+            await self.__send_error(interaction, 'Formato non valido')
         else:
             print(error)
             await self.__send_error(interaction, 'Errore sconosciuto')
