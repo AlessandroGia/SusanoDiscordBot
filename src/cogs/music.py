@@ -14,7 +14,7 @@ from src.checks.VoiceChannelChecks import check_voice_channel
 
 import wavelink
 
-from src.utils.utils import check_player
+from src.utils.utils import check_player, convert_time_to_ms
 from src.utils.embed import EmbedFactory
 from src.voice.VoiceGuild import VoiceState
 
@@ -124,10 +124,20 @@ class Music(ext.commands.Cog):
     )
     @app_commands.describe(
         search='Url o Nome della canzone da cercare',
+        force='Forza la riproduzione della canzone',
+        volume='Volume della canzone',
+        start="Posizione di partenza della prima canzone, eg. 23:59:59 o 360",
+        end="Posizione di fine della prima canzone, eg. 23:59:59 o 360"
     )
+    @app_commands.choices(force=[
+        app_commands.Choice(name="Si", value=1),
+    ])
     @check_voice_channel()
-    async def play(self, interaction: Interaction, search: str):
+    async def play(self, interaction: Interaction, search: str, force: app_commands.Choice[int] = 0, volume: int = 100, start: str = "0", end: str = None):
         tracks: wavelink.Search = await wavelink.Playable.search(search)
+        start = convert_time_to_ms(start)
+        end = convert_time_to_ms(end) if end else None
+
         if not tracks:
             raise TrackNotFoundError
         if isinstance(tracks, list) and len(tracks) > 1:
@@ -136,12 +146,23 @@ class Music(ext.commands.Cog):
                 view=SelectTrackView(
                     interaction,
                     self.__VoiceState,
-                    tracks
+                    tracks,
+                    force.value if force else False,
+                    volume,
+                    start,
+                    end
                 ),
                 ephemeral=True
             )
         else:
-            track_playing, tracks_queue = await self.__VoiceState.play(interaction, tracks)
+            track_playing, tracks_queue = await self.__VoiceState.play(
+                interaction,
+                tracks,
+                force.value if force else False,
+                volume,
+                start,
+                end
+            )
             await self.__VoiceState.feedback_play_command(
                 interaction,
                 track_playing,
@@ -199,6 +220,22 @@ class Music(ext.commands.Cog):
         await self.__send_message(
             interaction,
             f'Canzone fermata {"e coda di riproduzione svuotata" if flag else ""}',
+            delete_after=5
+        )
+
+    @app_commands.command(
+        name='volume',
+        description='Imposta il volume della canzone'
+    )
+    @app_commands.describe(
+        volume='Valore da 0 a 1000'
+    )
+    @check_voice_channel()
+    async def volume(self, interaction: Interaction, volume: int = 100):
+        await self.__VoiceState.volume(interaction, volume)
+        await self.__send_message(
+            interaction,
+            f'Volume impostato a {volume}',
             delete_after=5
         )
 
@@ -337,11 +374,14 @@ class Music(ext.commands.Cog):
         return False
 
     @play.error
+    @volume.error
     async def play_error(self, interaction: Interaction, error: ext.commands.CommandError):
         if not await self.__check_channel(interaction, error):
             pass
         elif isinstance(error, TrackNotFoundError):
             await self.__send_error(interaction, 'Canzone non trovata')
+        elif isinstance(error, ValueError):
+            await self.__send_error(interaction, 'Valore non valido')
         else:
             print(error)
             await self.__send_error(interaction, 'Errore sconosciuto')

@@ -50,14 +50,16 @@ class VoicePlayer:
         await guild_state.player.disconnect(force=True)
 
     @staticmethod
-    async def play(guild_state: GuildMusicData, interaction: Interaction, tracks: wavelink.Search) -> tuple[Optional[wavelink.Playable], wavelink.Search]:
+    async def play(guild_state: GuildMusicData, interaction: Interaction, tracks: wavelink.Search, force: bool, volume: int, start: int, end: int) -> tuple[Optional[wavelink.Playable], wavelink.Search]:
         for track in tracks:
             track.extras = {
                 'requester_name': interaction.user.display_name,
                 'requester_avatar': interaction.user.display_avatar.url
             }
-        if not guild_state.player.current:
+
+        if force or not guild_state.player.current:
             track = tracks.pop(0)
+
             if tracks:
                 guild_state.player.queue.put(tracks)
             track.extras = {
@@ -66,7 +68,16 @@ class VoicePlayer:
                 'requester_avatar': interaction.user.display_avatar.url
             }
 
-            await guild_state.player.play(track)
+            if not track.is_seekable or (end and not start < end < track.length) or (not end and not start < track.length):
+                start = 0
+                end = None
+
+            await guild_state.player.play(
+                track,
+                volume=volume,
+                start=start,
+                end=end
+            )
         else:
             track = None
             guild_state.player.queue.put(tracks)
@@ -113,10 +124,17 @@ class VoicePlayer:
 
         return flag
 
+    @staticmethod
+    async def volume(guild_state: GuildMusicData, volume: int):
+        if volume < 0 or volume > 1000:
+            raise ValueError
+
+        await guild_state.player.set_volume(volume)
+
 
     @staticmethod
     async def loop(guild_state: GuildMusicData) -> bool:
-        queue = guild_state.player.queue
+        queue: wavelink.Queue = guild_state.player.queue
 
         if not guild_state.player.current:
             raise NoCurrentTrack
@@ -133,7 +151,7 @@ class VoicePlayer:
 
     @staticmethod
     async def loop_all(guild_state: GuildMusicData):
-        queue = guild_state.player.queue
+        queue: wavelink.Queue = guild_state.player.queue
 
         if not guild_state.player.current:
             raise NoCurrentTrack
@@ -150,7 +168,7 @@ class VoicePlayer:
 
     @staticmethod
     async def shuffle(guild_state: GuildMusicData):
-        queue = guild_state.player.queue
+        queue: wavelink.Queue = guild_state.player.queue
 
         if queue.is_empty:
             raise QueueEmpty
@@ -159,7 +177,7 @@ class VoicePlayer:
 
     @staticmethod
     async def reset(guild_state: GuildMusicData):
-        queue = guild_state.player.queue
+        queue: wavelink.Queue = guild_state.player.queue
 
         if queue.is_empty:
             raise QueueEmpty
@@ -168,7 +186,7 @@ class VoicePlayer:
 
     @staticmethod
     async def remove(guild_state: GuildMusicData, index: int) -> wavelink.Playable:
-        queue = guild_state.player.queue
+        queue: wavelink.Queue = guild_state.player.queue
 
         if queue.is_empty:
             raise QueueEmpty
@@ -183,7 +201,7 @@ class VoicePlayer:
 
     @staticmethod
     async def swap(guild_state: GuildMusicData, index1: int, index2: int) -> tuple[wavelink.Playable, wavelink.Playable]:
-        queue = guild_state.player.queue
+        queue: wavelink.Queue = guild_state.player.queue
 
         if queue.is_empty:
             raise QueueEmpty
@@ -198,9 +216,14 @@ class VoicePlayer:
 
     @staticmethod
     async def queue(guild_state: GuildMusicData) -> tuple[str, list[str]]:
+        queue: wavelink.Queue = guild_state.player.queue
+
+        if queue.is_empty:
+            raise QueueEmpty
+
         queues = []
         current = ""
-        for i, song in enumerate(guild_state.player.queue):
+        for i, song in enumerate(queue):
             queue_str = f"{i + 1}. [{song.title}]({song.uri})\n"
             if len(current) + len(queue_str) <= 4090:
                 current += queue_str
@@ -211,12 +234,14 @@ class VoicePlayer:
             queues.append(current)
         return queues[0], queues[1:]
 
-
     @staticmethod
     async def play_next(guild_state: GuildMusicData):
         player: wavelink.Player = guild_state.player
         if not player.queue.is_empty:
             await player.play(player.queue.get())
+
+
+    @staticmethod
 
     async def inactive_player(self, guild_state: GuildMusicData):
         await self.leave(guild_state)
