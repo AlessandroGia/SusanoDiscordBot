@@ -17,20 +17,6 @@ class VoicePlayer:
         self.__bot: commands.Bot = bot
         self.__embed = EmbedFactory()
 
-    async def clear_now_playing(self, guild_state: GuildMusicData):
-        if isinstance(guild_state.last_message, discord.Interaction):
-            await guild_state.last_message.edit_original_response(
-                embed=self.__embed.finished_playing(
-                    guild_state.player.queue.history[-1]
-                )
-            )
-        else:
-            await guild_state.last_message.edit(
-                embed=self.__embed.finished_playing(
-                    guild_state.player.queue.history[-1]
-                )
-            )
-
     async def update_now_playing(self, guild_state: GuildMusicData):
         if isinstance(guild_state.last_message, discord.Interaction):
             await guild_state.last_message.edit_original_response(

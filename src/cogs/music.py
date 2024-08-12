@@ -33,10 +33,9 @@ class Music(ext.commands.Cog):
     async def on_wavelink_track_stuck(self, payload: wavelink.TrackStuckEventPayload) -> None:
         if check_player(payload.player):
             print("track stuck:", payload.threshold, payload.track.title)
-            await self.__send_error(
-                payload,
+            await self.__send_error_events(
+                payload.player.guild.id,
                 'Canzone bloccata, passando alla prossima',
-                delete_after=5
             )
             await self.__VoiceState.play_next(payload.player.guild.id)
 
@@ -44,10 +43,9 @@ class Music(ext.commands.Cog):
     async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload) -> None:
         if check_player(payload.player):
             print("track exception:", payload.exception, payload.track.title)
-            await self.__send_error(
-                payload,
+            await self.__send_error_events(
+                payload.player.guild.id,
                 'Errore durante la riproduzione della canzone, passando alla prossima',
-                delete_after=5
             )
             await self.__VoiceState.play_next(payload.player.guild.id)
 
@@ -70,7 +68,6 @@ class Music(ext.commands.Cog):
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
         if check_player(payload.player):
-            await self.__VoiceState.clear_now_playing(payload.player.guild.id)
             await self.__VoiceState.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
@@ -84,6 +81,18 @@ class Music(ext.commands.Cog):
             ephemeral=ephemeral,
             delete_after=delete_after
         )
+
+    async def __send_error_events(self, guild_id: int, mess: str):
+
+        channel: discord.TextChannel = await self.__bot.fetch_channel(
+            self.__VoiceState.get_channel_id(guild_id)
+        )
+
+        await channel.send(
+            embed=self.__embed.error(mess),
+            delete_after=5
+        )
+
 
     # --- --- --- --- --- --- #
     #                         #
@@ -110,7 +119,6 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def leave(self, interaction: Interaction):
-        await self.__VoiceState.clear_now_playing(interaction.guild_id)
         await self.__VoiceState.leave(interaction)
         await self.__send_message(
             interaction,
