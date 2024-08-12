@@ -47,9 +47,7 @@ class SusanoMusicBot(commands.Bot):
 
     async def on_ready(self) -> None:
         await self.tree.sync(
-            guild=Object(
-                id=928785387239915540
-            )
+            guild=Object(id=928785387239915540)
         )
         logging.info(f'Logged in as {self.user}')
 

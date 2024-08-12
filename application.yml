@@ -14,6 +14,8 @@ plugins:
     clients:
       - MUSIC
       - ANDROID
+      - ANDROID_MUSIC
+      - ANDROID_TESTSUITE
       - WEB
       - TVHTML5EMBEDDED
       - MEDIA_CONNECT
