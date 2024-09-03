@@ -6,6 +6,9 @@ server: # REST and WS server
 plugins:
   youtube:
     enabled: true # Whether this source can be used.
+    oauth:
+      enabled: true
+      refreshToken: "${YOUTUBE_REFRESH_TOKEN}"
     allowSearch: true # Whether "ytsearch:" and "ytmsearch:" can be used.
     allowDirectVideoIds: true # Whether just video IDs can match. If false, only complete URLs will be loaded.
     allowDirectPlaylistIds: true # Whether just playlist IDs can match. If false, only complete URLs will be loaded.
@@ -13,7 +16,7 @@ plugins:
     # Clients are queried in the order they are given (so the first client is queried first and so on...)
     clients:
       - MUSIC
-      - ANDROID
+      - WEBEMBEDDED
       - ANDROID_MUSIC
       - ANDROID_TESTSUITE
       - WEB
@@ -28,7 +31,7 @@ plugins:
 
 lavalink:
   plugins:
-     - dependency: "dev.lavalink.youtube:youtube-plugin:1.5.2"
+     - dependency: "dev.lavalink.youtube:youtube-plugin:1.7.2"
 #    - dependency: "com.github.example:example-plugin:1.0.0" # required, the coordinates of your plugin
 #      repository: "https://maven.example.com/releases" # optional, defaults to the Lavalink releases repository by default
 #      snapshot: false # optional, defaults to false, used to tell Lavalink to use the snapshot repository instead of the release repository
