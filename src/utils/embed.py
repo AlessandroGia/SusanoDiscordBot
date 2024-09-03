@@ -1,3 +1,4 @@
+from dis import disco
 from typing import Optional
 
 import wavelink
@@ -62,39 +63,21 @@ class EmbedFactory:
         )
         return embed
 
-    def now_playing_and_added_to_queue(self, tracks: wavelink.Search, track: wavelink.Playable) -> discord.Embed:
-        embed = self.now_playing(track)
-        embed.add_field(
-            name="Aggiunte:",
-            value=f"***{len(tracks)} {'tracce' if len(tracks) > 1 else 'traccia'}*** alla coda",
-            inline=False
-        )
-        return embed
-
     def now_playing_with_player(self, player: wavelink.Player) -> discord.Embed:
 
-        state = "⏸️" if player.paused else "▶️"
+        state = "⏸️" if player.paused else ""
         loop = "🔁" if player.queue.mode == wavelink.QueueMode.loop else "🔂" if player.queue.mode == wavelink.QueueMode.loop_all else ""
+
         embed = self.now_playing(player.current)
 
         embed.add_field(
             name="Player:",
             value=f"{state} {loop}",
             inline=False
-        )
+        ) if state or loop else None
 
         return embed
 
-    def finished_playing(self, track: wavelink.Playable) -> discord.Embed:
-        embed = self.now_playing(track)
-
-        # embed.add_field(
-        #     name="Player:",
-        #     value="⏹️",
-        #     inline=False
-        # )
-
-        return embed
 
     def now_playing(self, track: wavelink.Playable) -> discord.Embed:
 
@@ -118,11 +101,11 @@ class EmbedFactory:
             value=f"***{convert_time(track.length)}***",
             inline=True
         ) if track.length else None
+
         embed.set_author(
             name=self.__bot_name,
             icon_url=self.__icon_url
         )
-
         embed.set_footer(
             text=track.extras.requester_name,
             icon_url=track.extras.requester_avatar
@@ -133,48 +116,15 @@ class EmbedFactory:
     def added_to_queue(self, tracks: wavelink.Search, author: User) -> discord.Embed:
 
         if isinstance(tracks, wavelink.Playlist):
-            title = "Aggiunto alla coda"
-            description = f"> [{tracks.name}]({tracks.url})" if tracks.url else f"> {tracks.name}"
-            thumbnail = tracks.artwork if tracks.artwork else None
-            _author = f"***{tracks.author}***"
+            embed = self.__added_to_queue_playlist(
+                tracks,
+                author
+            )
         else:
-            title = "Aggiunte alla coda" if len(tracks) > 1 else "Aggiunta alla coda"
-            description = f"> [{tracks[0].title}]({tracks[0].uri})" if len(tracks) == 1 else None
-            thumbnail = tracks[0].artwork if len(tracks) == 1 and tracks[0].artwork else None
-            _author = f"***{tracks[0].author}***"
-
-        embed = discord.Embed(
-            title=title,
-            description=description,
-            color=discord.Color.green()
-        )
-
-        embed.set_thumbnail(url=thumbnail)
-
-        embed.add_field(
-            name="Autore:",
-            value=_author,
-            inline=True
-        ) if (isinstance(tracks, wavelink.Playlist) and tracks.author) or (len(tracks) == 1 and tracks[0].author) else None
-
-        embed.add_field(
-            name="Durata:",
-            value=f"***{convert_time(tracks[0].length)}***",
-            inline=True
-        ) if not isinstance(tracks, wavelink.Playlist) and len(tracks) == 1 else None
-        [
-            embed.add_field(
-                name=f"Traccia {index + 1}:",
-                value=f"***[{track.title}]({track.uri})***",
-                inline=False
-            ) for index, track in enumerate(tracks)
-        ] if not isinstance(tracks, wavelink.Playlist) and len(tracks) > 1 else None
-
-        embed.add_field(
-            name="Aggiunte:",
-            value=f"***{len(tracks.tracks)} {'tracce' if len(tracks.tracks) > 1 else 'traccia'}***",
-            inline=True
-        ) if isinstance(tracks, wavelink.Playlist) else None
+            embed = self.__added_to_queue_list(
+                tracks,
+                author
+            )
 
         embed.set_author(
             name=self.__bot_name,
@@ -184,4 +134,62 @@ class EmbedFactory:
             text=author.name,
             icon_url=author.display_avatar
         )
+        return embed
+
+    @staticmethod
+    def __added_to_queue_playlist(tracks: wavelink.Playlist, author: User) -> discord.Embed:
+
+        embed = discord.Embed(
+            title="Aggiunto alla coda",
+            description=f"> [{tracks.name}]({tracks.url})" if tracks.url else f"> {tracks.name}",
+            color=discord.Color.green()
+        )
+
+        embed.set_thumbnail(url=tracks.artwork) if tracks.artwork else None
+
+        embed.add_field(
+            name="Autore:",
+            value=f"***{tracks.author}***",
+            inline=True
+        ) if tracks.author else None
+
+        embed.add_field(
+            name="Aggiunte" if len(tracks.tracks) > 1 else "Aggiunta:",
+            value=f"***{len(tracks.tracks)} {'tracce' if len(tracks.tracks) > 1 else 'traccia'}***",
+            inline=True
+        )
+
+        return embed
+
+    @staticmethod
+    def __added_to_queue_list(tracks: wavelink.Search, author: User) -> discord.Embed:
+
+        embed = discord.Embed(
+            title="Aggiunte alla coda" if len(tracks) > 1 else "Aggiunta alla coda",
+            description=f"> [{tracks[0].title}]({tracks[0].uri})" if len(tracks) == 1 else None,
+            color=discord.Color.green()
+        )
+
+        embed.set_thumbnail(url=tracks[0].artwork) if len(tracks) == 1 and tracks[0].artwork else None
+
+        embed.add_field(
+            name="Autore:",
+            value=f"***{tracks[0].author}***",
+            inline=True
+        ) if tracks[0].author else None
+
+        embed.add_field(
+            name="Durata:",
+            value=f"***{convert_time(tracks[0].length)}***",
+            inline=True
+        ) if len(tracks) == 1 else None
+
+        [
+            embed.add_field(
+                name=f"Traccia {index + 1}:",
+                value=f"***[{track.title}]({track.uri})***",
+                inline=False
+            ) for index, track in enumerate(tracks)
+        ] if len(tracks) > 1 else None
+
         return embed
