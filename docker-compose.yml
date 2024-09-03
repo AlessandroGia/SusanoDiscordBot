@@ -15,6 +15,7 @@ services:
     environment:
       - SERVER_PORT=${LAVA_PORT}
       - LAVALINK_SERVER_PASSWORD=${LAVA_PASSWORD}
+      - YOUTUBE_REFRESH_TOKEN=${YOUTUBE_REFRESH_TOKEN}
     volumes:
       - ./application.yml:/opt/Lavalink/application.yml
     networks:

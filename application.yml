@@ -8,7 +8,7 @@ plugins:
     enabled: true # Whether this source can be used.
     oauth:
       enabled: true
-      refreshToken: "${YOUTUBE_REFRESH_TOKEN}"
+      refreshToken: ${YOUTUBE_REFRESH_TOKEN}
     allowSearch: true # Whether "ytsearch:" and "ytmsearch:" can be used.
     allowDirectVideoIds: true # Whether just video IDs can match. If false, only complete URLs will be loaded.
     allowDirectPlaylistIds: true # Whether just playlist IDs can match. If false, only complete URLs will be loaded.
