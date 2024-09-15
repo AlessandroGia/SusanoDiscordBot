@@ -293,7 +293,7 @@ class VoiceState:
         for track in tracks:
             track.extras = requester
         if len(tracks) == 1:
-            track = tracks[0]
+            track = tracks.pop(0)
             track.extras = {
                 'requester_name': interaction.user.display_name,
                 'requester_avatar': interaction.user.display_avatar.url,
@@ -302,10 +302,15 @@ class VoiceState:
                 'end': end,
                 'populate': populate
             }
+
             if force:
                 guild_state.voice_player.put_in_queue_at(0, track)
             else:
                 guild_state.voice_player.put_in_queue(track)
+
+        if tracks:
+            guild_state.voice_player.put_in_queue(tracks)
+
         if guild_state.voice_player.get_current_track():
             await guild_state.voice_player.play()
 

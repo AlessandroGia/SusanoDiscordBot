@@ -24,8 +24,8 @@ class VoicePlayer:
     async def leave(self) -> None:
         await self.__player.disconnect(force=True)
 
-    def put_in_queue(self, track: wavelink.Playable) -> None:
-        self.__player.queue.put(track)
+    def put_in_queue(self, tracks: list[wavelink.Playable] | wavelink.Playable | wavelink.Playlist) -> None:
+        self.__player.queue.put(tracks)
 
     def put_in_queue_at(self, index: int, track: wavelink.Playable) -> None:
         self.__player.queue.put_at(index, track)
