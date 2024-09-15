@@ -6,9 +6,8 @@ from src.exceptions.Generic import InvalidFormat
 from src.ui.PlayerUI import PlayerView
 from src.ui.SelectUI import SelectTrackView
 
-from src.exceptions.PlayerExceptions import NoCurrentTrack, AlreadyPaused, AlreadyResumed, IllegalState, \
-    InvalidSeekTime, TrackNotSeekable
-from src.exceptions.QueueException import QueueEmpty, AlreadyLoop, AlreadyLoopAll
+from src.exceptions.PlayerExceptions import *
+from src.exceptions.QueueException import *
 from src.exceptions.TrackPlayerExceptions import *
 from src.exceptions.VoiceChannelExceptions import *
 
@@ -23,7 +22,7 @@ from src.voice.VoiceGuild import VoiceState
 class Music(ext.commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.__bot: commands.Bot = bot
-        self.__VoiceState = VoiceState(bot)
+        self.__VoiceState = VoiceState()
         self.__embed = EmbedFactory()
 
     @commands.Cog.listener()
@@ -31,7 +30,7 @@ class Music(ext.commands.Cog):
         self.__VoiceState.server_clean_up()
 
     @commands.Cog.listener()
-    async def on_wavelink_node_closed(node: wavelink.Node, disconnected: list[wavelink.Player]):
+    async def on_wavelink_node_closed(self, node: wavelink.Node, disconnected: list[wavelink.Player]):
         pass
 
     @commands.Cog.listener()
@@ -74,7 +73,7 @@ class Music(ext.commands.Cog):
                 payload.player.guild.id
             )
 
-            message: discord.Message = await channel.send(
+            await channel.send(
                 embed=self.__embed.now_playing(payload.track),
                 view=view
             )
@@ -209,20 +208,6 @@ class Music(ext.commands.Cog):
                 populate.value if populate else False
             )
 
-
-    @app_commands.command(
-        name='stop',
-        description='Ferma la canzone e svuota la coda di riproduzione'
-    )
-    @check_voice_channel()
-    async def stop(self, interaction: Interaction):
-        flag = await self.__VoiceState.stop(interaction)
-        await self.__send_message(
-            interaction,
-            f'Canzone fermata {"e coda di riproduzione svuotata" if flag else ""}',
-            delete_after=5
-        )
-
     @app_commands.command(
         name='volume',
         description='Imposta il volume della canzone'
@@ -276,19 +261,6 @@ class Music(ext.commands.Cog):
         )
 
     @app_commands.command(
-        name='shuffle',
-        description='Mescola la coda di riproduzione'
-    )
-    @check_voice_channel()
-    async def shuffle(self, interaction: Interaction):
-        await self.__VoiceState.shuffle(interaction)
-        await self.__send_message(
-            interaction,
-            'Coda mescolata',
-            delete_after=5
-        )
-
-    @app_commands.command(
         name='remove',
         description='Rimuove una canzone dalla coda di riproduzione'
     )
@@ -320,23 +292,6 @@ class Music(ext.commands.Cog):
             ephemeral=True,
             delete_after=5
         )
-
-    @app_commands.command(
-        name='queue',
-        description='Mostra la coda di riproduzione'
-    )
-    @check_voice_channel()
-    async def queue(self, interaction: Interaction):
-        interaction_queue, followup_queues = await self.__VoiceState.queue(interaction)
-
-        await interaction.response.send_message(
-            embed=self.__embed.queue(interaction_queue, 1, len(followup_queues) + 1),
-        )
-
-        for i, queue in enumerate(followup_queues, 2):
-            await interaction.channel.send(
-                embed=self.__embed.queue(queue, i, len(followup_queues) + 1)
-            )
 
     # --- CHECKS --- #
 
@@ -400,23 +355,12 @@ class Music(ext.commands.Cog):
             print(error)
             await self.__send_error(interaction, 'Errore sconosciuto')
 
-    @stop.error
-    async def skip_error(self, interaction: Interaction, error: ext.commands.CommandError):
-        if not await self.__check_channel(interaction, error):
-            pass
-        elif isinstance(error, NoCurrentTrack):
-            await self.__send_error(interaction, 'Nessuna canzone in riproduzione')
-        else:
-            print(error)
-            await self.__send_error(interaction, 'Errore sconosciuto')
-
     # --- QUEUE ERROR HANDLING --- #
 
-    @queue.error
+
     @remove.error
     @swap.error
     @reset.error
-    @shuffle.error
     async def shuffle_error(self, interaction: Interaction, error: ext.commands.CommandError):
         if not await self.__check_channel(interaction, error):
             pass
