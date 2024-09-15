@@ -3,6 +3,7 @@ from discord import Object, Interaction, app_commands, ext
 from discord.ext import commands
 
 from src.exceptions.Generic import InvalidFormat
+from src.ui.PlayerUI import PlayerView
 from src.ui.SelectUI import SelectTrackView
 
 from src.exceptions.PlayerExceptions import NoCurrentTrack, AlreadyPaused, AlreadyResumed, IllegalState, \
@@ -24,6 +25,14 @@ class Music(ext.commands.Cog):
         self.__bot: commands.Bot = bot
         self.__VoiceState = VoiceState(bot)
         self.__embed = EmbedFactory()
+
+    @commands.Cog.listener()
+    async def on_wavelink_websocket_closed(self, payload: wavelink.WebsocketClosedEventPayload):
+        self.__VoiceState.server_clean_up()
+
+    @commands.Cog.listener()
+    async def on_wavelink_node_closed(node: wavelink.Node, disconnected: list[wavelink.Player]):
+        pass
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload) -> None:
@@ -51,25 +60,36 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
-        if check_player(payload.player) and "first" not in dir(payload.track.extras):
-            print("auto_queue:", payload.player.auto_queue)
+        if check_player(payload.player):
+
+            if last_view := self.__VoiceState.get_last_view(payload.player.guild.id):
+                last_view.stop()
+
             channel: discord.TextChannel = await self.__bot.fetch_channel(
                 self.__VoiceState.get_channel_id(payload.player.guild.id)
             )
 
-            message: discord.Message = await channel.send(
-                embed=self.__embed.now_playing_with_player(payload.player)
+            view = PlayerView(
+                self.__VoiceState,
+                payload.player.guild.id
             )
 
-            self.__VoiceState.set_last_message(
+            message: discord.Message = await channel.send(
+                embed=self.__embed.now_playing(payload.track),
+                view=view
+            )
+
+            self.__VoiceState.set_last_view(
                 payload.player.guild.id,
-                message
+                view
             )
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
         if check_player(payload.player):
+            print('Fine canzone', payload.track.title)
             await self.__VoiceState.play_next(payload.player.guild.id)
+
 
     @commands.Cog.listener()
     async def on_wavelink_inactive_player(self, player: wavelink.Player):
@@ -157,11 +177,12 @@ class Music(ext.commands.Cog):
     @check_voice_channel()
     async def play(self, interaction: Interaction, search: str, force: app_commands.Choice[int] = 0, volume: app_commands.Range[int, 0, 1000] = 100, start: str = "0", end: str = None, populate: app_commands.Choice[int] = 0):
         tracks: wavelink.Search = await wavelink.Playable.search(search)
+        if not tracks:
+            raise TrackNotFoundError
+
         start = convert_time_to_ms(start)
         end = convert_time_to_ms(end) if end else None
 
-        if not tracks:
-            raise TrackNotFoundError
         if isinstance(tracks, list) and len(tracks) > 1:
             await interaction.response.send_message(
                 'Seleziona una canzone...',
@@ -178,7 +199,7 @@ class Music(ext.commands.Cog):
                 ephemeral=True
             )
         else:
-            track_playing, tracks_queue = await self.__VoiceState.play(
+            await self.__VoiceState.play_and_send_feedback(
                 interaction,
                 tracks,
                 force.value if force else False,
@@ -187,53 +208,7 @@ class Music(ext.commands.Cog):
                 end,
                 populate.value if populate else False
             )
-            await self.__VoiceState.feedback_play_command(
-                interaction,
-                track_playing,
-                tracks_queue
-            )
 
-
-    @app_commands.command(
-        name='skip',
-        description='Salta la canzone attuale'
-    )
-    @check_voice_channel()
-    async def skip(self, interaction: Interaction):
-        await self.__VoiceState.skip(interaction)
-        await self.__send_message(
-            interaction,
-            'Canzone skippata',
-            delete_after=5,
-        )
-
-    @app_commands.command(
-        name='pause',
-        description='Mette in pausa la canzone'
-    )
-    @check_voice_channel()
-    async def pause(self, interaction: Interaction):
-        await self.__VoiceState.pause(interaction)
-        await self.__send_message(
-            interaction,
-            'Canzone in pausa',
-            delete_after=5
-        )
-        await self.__VoiceState.update_now_playing(interaction.guild_id)
-
-    @app_commands.command(
-        name='resume',
-        description='Riprende la canzone'
-    )
-    @check_voice_channel()
-    async def resume(self, interaction: Interaction):
-        await self.__VoiceState.resume(interaction)
-        await self.__send_message(
-            interaction,
-            'Canzone ripresa',
-            delete_after=5
-        )
-        await self.__VoiceState.update_now_playing(interaction.guild_id)
 
     @app_commands.command(
         name='stop',
@@ -299,34 +274,6 @@ class Music(ext.commands.Cog):
             ephemeral=True,
             delete_after=5
         )
-
-    @app_commands.command(
-        name='loop',
-        description='Ripete la canzone attuale'
-    )
-    @check_voice_channel()
-    async def loop(self, interaction: Interaction):
-        loop = await self.__VoiceState.loop(interaction)
-        await interaction.response.send_message(
-            embed=self.__embed.send(f"Loop {"attivato" if loop else "disattivato"}" ),
-            ephemeral=True,
-            delete_after=5
-        )
-        await self.__VoiceState.update_now_playing(interaction.guild_id)
-
-    @app_commands.command(
-        name='loop_all',
-        description='Ripete tutte le canzoni'
-    )
-    @check_voice_channel()
-    async def loop_all(self, interaction: Interaction):
-        loop = await self.__VoiceState.loop_all(interaction)
-        await interaction.response.send_message(
-            embed=self.__embed.send(f"Loop all {"attivato" if loop else "disattivato"}" ),
-            ephemeral=True,
-            delete_after=5
-        )
-        await self.__VoiceState.update_now_playing(interaction.guild_id)
 
     @app_commands.command(
         name='shuffle',
@@ -453,22 +400,6 @@ class Music(ext.commands.Cog):
             print(error)
             await self.__send_error(interaction, 'Errore sconosciuto')
 
-    @pause.error
-    @resume.error
-    async def pause_error(self, interaction: Interaction, error: ext.commands.CommandError):
-        if not await self.__check_channel(interaction, error):
-            pass
-        elif isinstance(error, NoCurrentTrack):
-            await self.__send_error(interaction, 'Nessuna canzone in riproduzione')
-        elif isinstance(error, AlreadyPaused):
-            await self.__send_error(interaction, 'Canzone già in pausa')
-        elif isinstance(error, AlreadyResumed):
-            await self.__send_error(interaction, 'Canzone già ripresa')
-        else:
-            print(error)
-            await self.__send_error(interaction, 'Errore sconosciuto')
-
-    @skip.error
     @stop.error
     async def skip_error(self, interaction: Interaction, error: ext.commands.CommandError):
         if not await self.__check_channel(interaction, error):
@@ -496,22 +427,6 @@ class Music(ext.commands.Cog):
         else:
             print(error)
             await self.__send_error(interaction, 'Errore sconosciuto')
-
-    @loop.error
-    @loop_all.error
-    async def loop_error(self, interaction: Interaction, error: ext.commands.CommandError):
-        if not await self.__check_channel(interaction, error):
-            pass
-        elif isinstance(error, NoCurrentTrack):
-            await self.__send_error(interaction, 'Nessuna canzone in riproduzione')
-        elif isinstance(error, AlreadyLoopAll):
-            await self.__send_error(interaction, 'Canzone già in Loop All')
-        elif isinstance(error, AlreadyLoop):
-            await self.__send_error(interaction, 'Canzone già in Loop')
-        else:
-            print(error)
-            await self.__send_error(interaction, 'Errore sconosciuto')
-
 
 async def setup(bot: ext.commands.Bot):
     await bot.add_cog(

@@ -76,7 +76,8 @@ class SelectTrackDropdown(Select):
             track for track in self.__tracks if track.identifier in self.values
         ]
         await self.__interaction.delete_original_response()
-        track_playing, tracks_queue = await self.__voice_state.play(
+
+        await self.__voice_state.play_and_send_feedback(
             interaction,
             tracks,
             self.__force,
@@ -84,12 +85,6 @@ class SelectTrackDropdown(Select):
             self.__start,
             self.__end,
             self.__populate
-        )
-
-        await self.__voice_state.feedback_play_command(
-            interaction,
-            track_playing,
-            tracks_queue
         )
 
 

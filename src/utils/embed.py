@@ -54,31 +54,6 @@ class EmbedFactory:
         )
         return embed
 
-    def now_playing_and_added_to_queue_with_player(self, tracks: wavelink.Search, player: wavelink.Player):
-        embed = self.now_playing_with_player(player)
-        embed.add_field(
-            name="Aggiunte:",
-            value=f"***{len(tracks)} {'tracce' if len(tracks) > 1 else 'traccia'}*** alla coda",
-            inline=False
-        )
-        return embed
-
-    def now_playing_with_player(self, player: wavelink.Player) -> discord.Embed:
-
-        state = "⏸️" if player.paused else ""
-        loop = "🔁" if player.queue.mode == wavelink.QueueMode.loop else "🔂" if player.queue.mode == wavelink.QueueMode.loop_all else ""
-
-        embed = self.now_playing(player.current)
-
-        embed.add_field(
-            name="Player:",
-            value=f"{state} {loop}",
-            inline=False
-        ) if state or loop else None
-
-        return embed
-
-
     def now_playing(self, track: wavelink.Playable) -> discord.Embed:
 
         embed = discord.Embed(
@@ -140,7 +115,7 @@ class EmbedFactory:
     def __added_to_queue_playlist(tracks: wavelink.Playlist, author: User) -> discord.Embed:
 
         embed = discord.Embed(
-            title="Aggiunto alla coda",
+            title="Playlist aggiunta alla coda",
             description=f"> [{tracks.name}]({tracks.url})" if tracks.url else f"> {tracks.name}",
             color=discord.Color.green()
         )
