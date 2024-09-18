@@ -8,6 +8,7 @@ import wavelink
 class VoicePlayer:
     def __init__(self, player: wavelink.Player) -> None:
         self.__player: wavelink.Player = player
+        self.__original_queue: Optional[wavelink.Queue] = None
 
     def get_player(self) -> wavelink.Player:
         return self.__player
@@ -57,18 +58,15 @@ class VoicePlayer:
 
         await self.__player.pause(False)
 
-    async def stop(self) -> bool:
+    async def stop(self) -> None:
         player: wavelink.Player = self.__player
 
         if not player.current:
             raise NoCurrentTrack
 
-        if flag := not player.queue.is_empty:
-            player.queue.clear()
-
+        player.queue.reset()
         await player.skip()
 
-        return flag
 
     async def volume(self, volume: int) -> None:
         if volume < 0 or volume > 1000:
@@ -105,13 +103,30 @@ class VoicePlayer:
     def set_queue_mode(self, mode: wavelink.QueueMode) -> None:
         self.__player.queue.mode = mode
 
-    async def shuffle(self) -> None:
+    def is_shuffled(self) -> bool:
+        return self.__original_queue is not None
+
+    def shuffle(self) -> None:
+        queue: wavelink.Queue = self.__player.queue
+        player: wavelink.Player = self.__player
+
+        if player.current.recommended:
+            raise QueueEmpty
+
+        self.__original_queue = queue.copy()
+        self.__original_queue.put_at(0, self.__player.current)
+
+        queue.shuffle()
+
+    def unshuffle(self) -> None:
         queue: wavelink.Queue = self.__player.queue
 
         if queue.is_empty:
             raise QueueEmpty
 
-        queue.shuffle()
+        self.__player.queue.clear()
+        self.__player.queue.put(self.__original_queue[self.__original_queue.index(self.__player.current) + 1:])
+        self.__original_queue = None
 
     async def reset(self) -> None:
         queue: wavelink.Queue = self.__player.queue
@@ -149,20 +164,32 @@ class VoicePlayer:
 
         return tracks
 
-    async def queue(self) -> wavelink:
-        queue: wavelink.Queue = self.__player.queue
-
-        if queue.is_empty:
-            raise QueueEmpty
-
+    def queue(self) -> wavelink.Queue:
         return self.__player.queue
+
+    def auto_queue(self) -> wavelink.Queue:
+        return self.__player.auto_queue
 
     async def play_next(self) -> None:
         player: wavelink.Player = self.__player
         try:
-            await player.play(player.queue.get())
+            track = player.queue.get()
+            if track.recommended:
+                self.__switch_to_recommended()
+            await player.play(track)
         except wavelink.QueueEmpty:
             pass
+
+    def __switch_to_recommended(self) -> None:
+        player: wavelink.Player = self.__player
+        if player.queue.mode != wavelink.QueueMode.normal:
+            player.queue.mode = wavelink.QueueMode.normal
+        if self.__original_queue is not None:
+            self.__original_queue = None
+
+
+
+
 
     async def inactive_player(self) -> None:
         await self.leave()

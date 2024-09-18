@@ -5,6 +5,7 @@ from typing import Optional
 import wavelink
 
 from src.exceptions.PlayerExceptions import IllegalState
+from src.exceptions.QueueException import QueueEmpty
 from src.utils.embed import EmbedFactory
 from src.voice.guild_data.GuildMusicData import GuildMusicData
 from src.voice.voice_state.VoicePlayer import VoicePlayer
@@ -31,20 +32,17 @@ class VoiceState:
     def __set_guild_state(self, guild_id: int, data: GuildMusicData) -> None:
         self.__guild_state[guild_id] = data
 
-    async def play_and_send_feedback(self, interaction: Interaction, tracks_queue: wavelink.Search, force: bool, volume: int, start: int, end: int, populate: bool) -> None:
+    async def play_and_send_feedback(self, interaction: Interaction, tracks: wavelink.Search) -> None:
         if not (guild_state := self.__get_guild_state(interaction.guild_id)):
             raise IllegalState
 
         current = guild_state.voice_player.get_current_track()
-
         if current:
-            print('a')
             await interaction.response.send_message(
-                embed=self.__embed.added_to_queue(tracks_queue, interaction.user),
+                embed=self.__embed.added_to_queue(tracks, interaction.user),
                 ephemeral=True
             )
         else:
-            print('c')
             await interaction.response.send_message(
                 "Caricamento in corso...",
             )
@@ -52,12 +50,7 @@ class VoiceState:
         await self.__play(
             interaction,
             guild_state,
-            tracks_queue,
-            force,
-            volume,
-            start,
-            end,
-            populate
+            tracks,
         )
 
         if not current:
@@ -97,6 +90,12 @@ class VoiceState:
     ## player UI methods ##
     ## ----------------- ##
 
+    def get_current_track(self, guild_id: int) -> Optional[wavelink.Playable]:
+        if not (guild_state := self.__check_guild_state(guild_id)):
+            raise IllegalState
+
+        return guild_state.voice_player.get_current_track()
+
     def is_paused(self, guild_id: int) -> bool:
         if not (guild_state := self.__check_guild_state(guild_id)):
             raise IllegalState
@@ -125,12 +124,18 @@ class VoiceState:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
-        if guild_state.voice_player.is_paused():
-            await guild_state.voice_player.resume()
-            return False
-        else:
-            await guild_state.voice_player.pause()
-            return True
+        is_paused: bool = guild_state.voice_player.is_paused()
+        await guild_state.voice_player.pause() if not is_paused else await guild_state.voice_player.resume()
+        return not is_paused
+
+    def toggle_shuffle(self, interaction: Interaction) -> bool:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        is_shuffled: bool = guild_state.voice_player.is_shuffled()
+        guild_state.voice_player.shuffle() if not is_shuffled else guild_state.voice_player.unshuffle()
+        return not is_shuffled
+        # TRUE = shuffle, FALSE = unshuffle
 
     def toggle_loop(self, interaction: Interaction) -> wavelink.QueueMode:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -148,9 +153,8 @@ class VoiceState:
             guild_state.voice_player.set_queue_mode(wavelink.QueueMode.normal)
             return wavelink.QueueMode.normal
 
-
-    def get_queue_mode(self, interaction: Interaction) -> wavelink.QueueMode:
-        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+    def get_queue_mode(self, guild_id: int) -> wavelink.QueueMode:
+        if not (guild_state := self.__check_guild_state(guild_id)):
             raise IllegalState
 
         return guild_state.voice_player.get_queue_mode()
@@ -162,21 +166,20 @@ class VoiceState:
         guild_state.voice_player.set_queue_mode(mode)
 
 
-    async def queue(self, interaction: Interaction) -> tuple[str, list[str]]:
+    async def queue(self, interaction: Interaction) -> wavelink.Queue:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
-        queue: wavelink.Queue = await guild_state.voice_player.queue()
-        queues, current = [], []
-        for i, song in enumerate(queue, start=1):
-            queue_str = f"{i}. [{song.title}]({song.uri})\n"
-            if sum(len(s) for s in current) + len(queue_str) > 4090:
-                queues.append("".join(current))
-                current = []
-            current.append(queue_str)
-        if current:
-            queues.append("".join(current))
-        return queues[0], queues[1:]
+        queue: wavelink.Queue = guild_state.voice_player.queue()
+        auto_queue: wavelink.Queue = guild_state.voice_player.auto_queue()
+
+        for track in auto_queue:
+            queue(track)
+
+        if not queue:
+            raise QueueEmpty
+
+        return queue
 
 
     ## ----------------- ##
@@ -188,6 +191,7 @@ class VoiceState:
             cls=wavelink.Player
         )
         player.inactive_timeout = 180
+        player.autoplay = wavelink.AutoPlayMode.enabled
         self.__set_guild_state(
             interaction.guild_id,
             GuildMusicData(
@@ -202,26 +206,21 @@ class VoiceState:
 
         await guild_state.voice_player.leave()
 
-    async def play(self, interaction: Interaction, tracks: wavelink.Search, force: bool, volume: int, start: int, end: int, populate: bool) -> None:
+    async def play(self, interaction: Interaction, tracks: wavelink.Search) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
         await self.__play(
             interaction,
             guild_state,
-            tracks,
-            force,
-            volume,
-            start,
-            end,
-            populate
+            tracks
         )
 
-    async def stop(self, interaction: Interaction) -> bool:
+    async def stop(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
-        return await guild_state.voice_player.stop()
+        await guild_state.voice_player.stop()
 
     async def volume(self, interaction: Interaction, volume: int) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -246,11 +245,11 @@ class VoiceState:
         force = False if queue_mode == wavelink.QueueMode.loop_all else force
         await guild_state.voice_player.skip(force)
 
-    async def shuffle(self, interaction: Interaction) -> None:
-        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+    def is_shuffled(self, guild_id: int) -> bool:
+        if not (guild_state := self.__check_guild_state(guild_id)):
             raise IllegalState
 
-        await guild_state.voice_player.shuffle()
+        return guild_state.voice_player.is_shuffled()
 
     async def reset(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -285,33 +284,12 @@ class VoiceState:
 
 
     @staticmethod
-    async def __play(interaction: Interaction, guild_state: GuildMusicData, tracks: wavelink.Search, force: bool, volume: int, start: int, end: int, populate: bool) -> None:
-        requester = {
-            'requester_name': interaction.user.display_name,
-            'requester_avatar': interaction.user.display_avatar.url
-        }
+    async def __play(interaction: Interaction, guild_state: GuildMusicData, tracks: wavelink.Search) -> None:
         for track in tracks:
-            track.extras = requester
-        if len(tracks) == 1:
-            track = tracks.pop(0)
             track.extras = {
                 'requester_name': interaction.user.display_name,
-                'requester_avatar': interaction.user.display_avatar.url,
-                'volume': volume,
-                'start': start,
-                'end': end,
-                'populate': populate
+                'requester_avatar': interaction.user.display_avatar.url
             }
-
-            if force:
-                guild_state.voice_player.put_in_queue_at(0, track)
-            else:
-                guild_state.voice_player.put_in_queue(track)
-
-        if tracks:
-            guild_state.voice_player.put_in_queue(tracks)
-
-        if guild_state.voice_player.get_current_track():
+        guild_state.voice_player.put_in_queue(tracks)
+        if not guild_state.voice_player.get_current_track():
             await guild_state.voice_player.play()
-
-

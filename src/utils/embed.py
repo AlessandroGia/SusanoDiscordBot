@@ -38,52 +38,43 @@ class EmbedFactory:
         )
         return embed
 
-    def queue(self, queue_str: str, page: int, num_pages: int) -> discord.Embed:
-
-        embed = discord.Embed(
-            title=f"Coda di Riproduzione - Pagina {page}",
-            description=queue_str,
-            color=discord.Color.blue()
-        )
-        embed.set_footer(
-            text=f"Pagina {page} " + f"di {num_pages}" if num_pages > 1 else "",
-        )
-        embed.set_author(
-            name=self.__bot_name,
-            icon_url=self.__icon_url
-        )
-        return embed
-
     def now_playing(self, track: wavelink.Playable) -> discord.Embed:
 
         embed = discord.Embed(
-            title="Riproducendo",
+            title="🎶 In Riproduzione",
             description=f"> [{track.title}]({track.uri})",
             color=discord.Color.blurple()
         )
         embed.set_thumbnail(url=track.artwork) if track.artwork else None
         embed.add_field(
-            name="Autore:",
+            name="👤 Autore:",
             value=f"***{track.author}***",
             inline=True
         ) if track.author else None
         embed.add_field(
-            name="Playlist:",
+            name="📀 Playlist:",
             value=f"***{track.playlist.name}***",
         ) if track.playlist else None
         embed.add_field(
-            name="Durata:",
+            name="⏱️ Durata:",
             value=f"***{convert_time(track.length)}***",
             inline=True
         ) if track.length else None
 
+        icon_url = None
+
+        if track.source == "youtube":
+            icon_url = "https://cdn3.iconfinder.com/data/icons/social-network-30/512/social-06-512.png"
+        elif track.source == "spotify":
+            icon_url = "https://storage.googleapis.com/pr-newsroom-wp/1/2023/05/Spotify_Primary_Logo_RGB_Green.png"
+
         embed.set_author(
-            name=self.__bot_name,
-            icon_url=self.__icon_url
+            name=track.source.capitalize(),
+            icon_url=icon_url
         )
         embed.set_footer(
-            text=track.extras.requester_name,
-            icon_url=track.extras.requester_avatar
+            text=track.extras.requester_name if "requester_name" in dir(track.extras) else "Consigliata",
+            icon_url=track.extras.requester_avatar if "requester_avatar" in dir(track.extras) else None
         )
 
         return embed
@@ -91,15 +82,9 @@ class EmbedFactory:
     def added_to_queue(self, tracks: wavelink.Search, author: User) -> discord.Embed:
 
         if isinstance(tracks, wavelink.Playlist):
-            embed = self.__added_to_queue_playlist(
-                tracks,
-                author
-            )
+            embed = self.__added_to_queue_playlist(tracks)
         else:
-            embed = self.__added_to_queue_list(
-                tracks,
-                author
-            )
+            embed = self.__added_to_queue_list(tracks)
 
         embed.set_author(
             name=self.__bot_name,
@@ -112,10 +97,10 @@ class EmbedFactory:
         return embed
 
     @staticmethod
-    def __added_to_queue_playlist(tracks: wavelink.Playlist, author: User) -> discord.Embed:
+    def __added_to_queue_playlist(tracks: wavelink.Playlist) -> discord.Embed:
 
         embed = discord.Embed(
-            title="Playlist aggiunta alla coda",
+            title="📀 Playlist aggiunta alla coda",
             description=f"> [{tracks.name}]({tracks.url})" if tracks.url else f"> {tracks.name}",
             color=discord.Color.green()
         )
@@ -123,13 +108,13 @@ class EmbedFactory:
         embed.set_thumbnail(url=tracks.artwork) if tracks.artwork else None
 
         embed.add_field(
-            name="Autore:",
+            name="👤 Autore:",
             value=f"***{tracks.author}***",
             inline=True
         ) if tracks.author else None
 
         embed.add_field(
-            name="Aggiunte" if len(tracks.tracks) > 1 else "Aggiunta:",
+            name="🎵 Aggiunte:" if len(tracks.tracks) > 1 else "🎵 Aggiunta:",
             value=f"***{len(tracks.tracks)} {'tracce' if len(tracks.tracks) > 1 else 'traccia'}***",
             inline=True
         )
@@ -137,10 +122,10 @@ class EmbedFactory:
         return embed
 
     @staticmethod
-    def __added_to_queue_list(tracks: wavelink.Search, author: User) -> discord.Embed:
+    def __added_to_queue_list(tracks: wavelink.Search) -> discord.Embed:
 
         embed = discord.Embed(
-            title="Aggiunte alla coda" if len(tracks) > 1 else "Aggiunta alla coda",
+            title="📋 Tracce aggiunte alla coda" if len(tracks) > 1 else "📋 Traccia aggiunta alla coda",
             description=f"> [{tracks[0].title}]({tracks[0].uri})" if len(tracks) == 1 else None,
             color=discord.Color.green()
         )
@@ -148,23 +133,49 @@ class EmbedFactory:
         embed.set_thumbnail(url=tracks[0].artwork) if len(tracks) == 1 and tracks[0].artwork else None
 
         embed.add_field(
-            name="Autore:",
+            name="👤 Autore:",
             value=f"***{tracks[0].author}***",
             inline=True
-        ) if tracks[0].author else None
+        ) if len(tracks) == 1 and tracks[0].author else None
 
         embed.add_field(
-            name="Durata:",
+            name="⏱️ Durata:",
             value=f"***{convert_time(tracks[0].length)}***",
             inline=True
         ) if len(tracks) == 1 else None
 
         [
             embed.add_field(
-                name=f"Traccia {index + 1}:",
+                name=f"🎵 Traccia {index}:",
                 value=f"***[{track.title}]({track.uri})***",
                 inline=False
-            ) for index, track in enumerate(tracks)
+            ) for index, track in enumerate(tracks, start=1)
         ] if len(tracks) > 1 else None
+
+        return embed
+
+class EmbedQueue:
+    def __init__(self, num_tracks: int, max_page: int, track_per_page: int):
+        self.num_tracks = num_tracks
+        self.max_page = max_page
+        self.track_per_page = track_per_page
+
+    def queue(self, queue: list[wavelink.Playable], current_page: int) -> discord.Embed:
+        embed = discord.Embed(
+            title="📋 Coda",
+            description=f"**{self.num_tracks} {'tracce' if self.num_tracks > 1 else 'traccia'} nella coda**",
+            color=discord.Color.green()
+        )
+
+        for index, track in enumerate(queue[:25], start=(current_page - 1) * self.track_per_page + 1):
+            embed.add_field(
+                name=f"{index}. 🎵 {track.title}",
+                value=f"**Autore**: {track.author} | **Durata**: {convert_time(track.length)}{' 🌟 Consigliata' if track.recommended else ''}" ,
+                inline=False
+            )
+
+        embed.set_footer(
+            text=f"Pagina {current_page}/{self.max_page}"
+        ) if self.max_page > 1 else None
 
         return embed

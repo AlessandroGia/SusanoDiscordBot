@@ -17,21 +17,11 @@ class SelectTrackDropdown(Select):
             self,
             voice_state: VoiceState,
             interaction: discord.Interaction,
-            tracks: list[wavelink.Playable],
-            force: bool,
-            volume: int,
-            start: int,
-            end: int,
-            populate: bool):
+            tracks: list[wavelink.Playable]):
 
         self.__voice_state: VoiceState = voice_state
         self.__interaction: discord.Interaction = interaction
         self.__tracks: list[wavelink.Playable] = tracks
-        self.__force: bool = force
-        self.__volume: int = volume
-        self.__start: int = start
-        self.__end: int = end
-        self.__populate: bool = populate
         self.__embed: EmbedFactory = EmbedFactory()
 
         _format = lambda label: label[:96] + "..." if len(label) >= 100 else label
@@ -80,11 +70,6 @@ class SelectTrackDropdown(Select):
         await self.__voice_state.play_and_send_feedback(
             interaction,
             tracks,
-            self.__force,
-            self.__volume,
-            self.__start,
-            self.__end,
-            self.__populate
         )
 
 
@@ -93,23 +78,13 @@ class SelectTrackView(View):
             self,
             voice_state: VoiceState,
             interaction: discord.Interaction,
-            tracks: list[wavelink.Playable],
-            force: bool,
-            volume: int,
-            start: int,
-            end: int,
-            populate: bool):
+            tracks: list[wavelink.Playable]):
         super().__init__()
         self.add_item(
             SelectTrackDropdown(
                 voice_state,
                 interaction,
-                tracks,
-                force,
-                volume,
-                start,
-                end,
-                populate
+                tracks
             )
         )
         self.__embed = EmbedFactory()

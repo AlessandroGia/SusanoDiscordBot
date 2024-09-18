@@ -1,9 +1,9 @@
-import discord
 from discord import Object, Interaction, app_commands, ext
 from discord.ext import commands
 
 from src.exceptions.Generic import InvalidFormat
 from src.ui.PlayerUI import PlayerView
+from src.ui.QueueUI import QueueView
 from src.ui.SelectUI import SelectTrackView
 
 from src.exceptions.PlayerExceptions import *
@@ -12,11 +12,13 @@ from src.exceptions.TrackPlayerExceptions import *
 from src.exceptions.VoiceChannelExceptions import *
 
 from src.checks.VoiceChannelChecks import check_voice_channel
-import wavelink
 
 from src.utils.utils import check_player, convert_time_to_ms, ms_to_time
 from src.utils.embed import EmbedFactory
 from src.voice.VoiceGuild import VoiceState
+
+import wavelink
+import discord
 
 
 class Music(ext.commands.Cog):
@@ -89,7 +91,6 @@ class Music(ext.commands.Cog):
             print('Fine canzone', payload.track.title)
             await self.__VoiceState.play_next(payload.player.guild.id)
 
-
     @commands.Cog.listener()
     async def on_wavelink_inactive_player(self, player: wavelink.Player):
         if check_player(player):
@@ -119,7 +120,6 @@ class Music(ext.commands.Cog):
             embed=self.__embed.error(mess),
             delete_after=5
         )
-
 
     # --- --- --- --- --- --- #
     #                         #
@@ -159,28 +159,12 @@ class Music(ext.commands.Cog):
     )
     @app_commands.describe(
         search='Url o Nome della canzone da cercare',
-        force='Forza la riproduzione della canzone',
-        volume='Volume della canzone, da 0 a 1000',
-        start="Posizione di partenza della prima canzone, eg. hh:mm:ss oppure in secondi",
-        end="Posizione di fine della prima canzone, eg. hh:mm:ss oppure in secondi",
-        populate="Popola la coda con le canzoni raccomandate"
-    )
-    @app_commands.choices(
-        force=[
-            app_commands.Choice(name="Si", value=1),
-        ],
-        populate=[
-            app_commands.Choice(name="Si", value=1),
-        ]
     )
     @check_voice_channel()
-    async def play(self, interaction: Interaction, search: str, force: app_commands.Choice[int] = 0, volume: app_commands.Range[int, 0, 1000] = 100, start: str = "0", end: str = None, populate: app_commands.Choice[int] = 0):
+    async def play(self, interaction: Interaction, search: str):
         tracks: wavelink.Search = await wavelink.Playable.search(search)
         if not tracks:
             raise TrackNotFoundError
-
-        start = convert_time_to_ms(start)
-        end = convert_time_to_ms(end) if end else None
 
         if isinstance(tracks, list) and len(tracks) > 1:
             await interaction.response.send_message(
@@ -189,11 +173,6 @@ class Music(ext.commands.Cog):
                     self.__VoiceState,
                     interaction,
                     tracks,
-                    force.value if force else False,
-                    volume,
-                    start,
-                    end,
-                    populate.value if populate else False
                 ),
                 ephemeral=True
             )
@@ -201,11 +180,6 @@ class Music(ext.commands.Cog):
             await self.__VoiceState.play_and_send_feedback(
                 interaction,
                 tracks,
-                force.value if force else False,
-                volume,
-                start,
-                end,
-                populate.value if populate else False
             )
 
     @app_commands.command(

@@ -6,12 +6,14 @@ import wavelink
 from aiohttp.web_routedef import delete
 from discord import Interaction
 from discord.ui import Button, View, Item
+from math import ceil
 
 from src.exceptions.QueueException import *
 from src.exceptions.VoiceChannelExceptions import *
 from src.exceptions.PlayerExceptions import *
+from src.ui.QueueUI import QueueView
 
-from src.utils.embed import EmbedFactory
+from src.utils.embed import EmbedFactory, EmbedQueue
 
 
 class ResumePauseButton(Button):
@@ -27,7 +29,7 @@ class ResumePauseButton(Button):
         )
 
     async def callback(self, interaction):
-        state = self.__voice_state.toggle_pause(interaction)
+        state = await self.__voice_state.toggle_pause(interaction)
         self.emoji = "▶️" if state else "⏸️"
         await interaction.response.edit_message(view=self.view)
 
@@ -45,25 +47,18 @@ class BackButton(Button):
         await interaction.response.edit_message(view=self.view)
 
 class ShuffleButton(Button):
-    def __init__(self, voice_state, row: int):
+    def __init__(self, voice_state, guild_id: int, row: int):
         self.__voice_state = voice_state
-        self.__state = True
         super().__init__(
             emoji = "🔀",
-            style = discord.ButtonStyle.secondary,
+            style = discord.ButtonStyle.secondary if not self.__voice_state.is_shuffled(guild_id) else discord.ButtonStyle.success,
+            disabled=True if self.__voice_state.get_current_track(guild_id).recommended else False,
             row=row
         )
 
     async def callback(self, interaction):
-        if self.__state:
-            self.style = discord.ButtonStyle.success
-            #await self.__voice_state.shuffle(interaction)
-            self.__state = False
-        else:
-            self.style = discord.ButtonStyle.secondary
-            #await self.__voice_state.unshuffle(interaction)
-            self.__state = True
-
+        is_shuffled: bool = self.__voice_state.toggle_shuffle(interaction)
+        self.style = discord.ButtonStyle.success if is_shuffled else discord.ButtonStyle.secondary
         await interaction.response.edit_message(view=self.view)
 
 class SkipButton(Button):
@@ -90,6 +85,7 @@ class LoopButton(Button):
         super().__init__(
             emoji = "🔂" if queue_mode == wavelink.QueueMode.loop else "🔁",
             style = discord.ButtonStyle.secondary if queue_mode == wavelink.QueueMode.normal else discord.ButtonStyle.success,
+            disabled=True if self.__voice_state.get_current_track(guild_id).recommended else False,
             row=row
         )
 
@@ -137,26 +133,33 @@ class QueueButton(Button):
         )
 
     async def callback(self, interaction):
-        await self.__voice_state.queue(interaction)
+        queue: wavelink.Queue = await self.__voice_state.queue(interaction)
+        track_per_page: int = 2
 
-        interaction_queue, followup_queues = await self.__voice_state.queue(interaction)
-
+        max_page: int = ceil(queue.count / track_per_page)
+        embed = EmbedQueue(
+            queue.count,
+            max_page,
+            track_per_page
+        )
         await interaction.response.send_message(
-            embed=self.__embed.queue(interaction_queue, 1, len(followup_queues) + 1),
-            ephemeral=True,
+            embed=embed.queue(
+                queue[:track_per_page],
+                1
+            ),
+            view=QueueView(
+                queue,
+                embed
+            ),
+            ephemeral=True
         )
 
-        for i, queue in enumerate(followup_queues, 2):
-            await interaction.followup.send(
-                embed=self.__embed.queue(queue, i, len(followup_queues) + 1),
-                ephemeral=True
-            )
 
 class PlayerView(View):
     def __init__(self, voice_state, guild_id: int):
         super().__init__()
         self.__embed = EmbedFactory()
-        self.add_item(ShuffleButton(voice_state, 0))
+        self.add_item(ShuffleButton(voice_state, guild_id, 0))
         self.add_item(BackButton(voice_state, 0))
         self.add_item(ResumePauseButton(voice_state, guild_id, 0))
         self.add_item(ResetButton(voice_state, 1))
