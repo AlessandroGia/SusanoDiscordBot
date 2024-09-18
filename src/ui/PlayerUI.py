@@ -134,21 +134,36 @@ class QueueButton(Button):
 
     async def callback(self, interaction):
         queue: wavelink.Queue = await self.__voice_state.queue(interaction)
+        auto_queue: wavelink.Queue = self.__voice_state.auto_queue(interaction)
+        new_queue: wavelink.Queue() = wavelink.Queue()
+
+        print('queue', len(queue), '--->', queue)
+        print('auto_queue', len(auto_queue), '--->', auto_queue)
+
+        if not queue and not auto_queue:
+            raise QueueEmpty
+
+        for track in queue:
+            new_queue.put(track)
+
+        for track in auto_queue:
+            new_queue.put(track)
+
         track_per_page: int = 25
 
-        max_page: int = ceil(queue.count / track_per_page)
+        max_page: int = ceil(new_queue.count / track_per_page)
         embed = EmbedQueue(
-            queue.count,
+            new_queue.count,
             max_page,
             track_per_page
         )
         await interaction.response.send_message(
             embed=embed.queue(
-                queue[:track_per_page],
+                new_queue[:track_per_page],
                 1
             ),
             view=QueueView(
-                queue,
+                new_queue,
                 embed
             ),
             ephemeral=True

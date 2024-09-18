@@ -165,21 +165,17 @@ class VoiceState:
 
         guild_state.voice_player.set_queue_mode(mode)
 
+    def auto_queue(self, interaction: Interaction) -> wavelink.Queue:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        return guild_state.voice_player.auto_queue()
 
     async def queue(self, interaction: Interaction) -> wavelink.Queue:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
-        queue: wavelink.Queue = guild_state.voice_player.queue()
-        auto_queue: wavelink.Queue = guild_state.voice_player.auto_queue()
-
-        for track in auto_queue:
-            queue(track)
-
-        if not queue:
-            raise QueueEmpty
-
-        return queue
+        return guild_state.voice_player.queue()
 
 
     ## ----------------- ##

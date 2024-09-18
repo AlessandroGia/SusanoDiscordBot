@@ -36,6 +36,7 @@ class VoicePlayer:
 
     async def skip(self, force: bool) -> None:
         if not await self.__player.stop(force=force):
+            print("Error adadsad")
             raise NoCurrentTrack
 
     async def pause(self) -> None:
