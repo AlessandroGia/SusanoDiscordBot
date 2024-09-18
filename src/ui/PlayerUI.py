@@ -134,7 +134,7 @@ class QueueButton(Button):
 
     async def callback(self, interaction):
         queue: wavelink.Queue = await self.__voice_state.queue(interaction)
-        track_per_page: int = 2
+        track_per_page: int = 25
 
         max_page: int = ceil(queue.count / track_per_page)
         embed = EmbedQueue(
