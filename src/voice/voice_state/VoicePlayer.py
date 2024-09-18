@@ -31,9 +31,6 @@ class VoicePlayer:
     def put_in_queue_at(self, index: int, track: wavelink.Playable) -> None:
         self.__player.queue.put_at(index, track)
 
-    async def play(self) -> None:
-        await self.play_next()
-
     async def skip(self, force: bool) -> None:
         if not await self.__player.stop(force=force):
             print("Error adadsad")

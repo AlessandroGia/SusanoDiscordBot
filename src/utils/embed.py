@@ -73,7 +73,7 @@ class EmbedFactory:
             icon_url=icon_url
         )
         embed.set_footer(
-            text=track.extras.requester_name if "requester_name" in dir(track.extras) else "Consigliata",
+            text=track.extras.requester_name if "requester_name" in dir(track.extras) else "🌟 Consigliata",
             icon_url=track.extras.requester_avatar if "requester_avatar" in dir(track.extras) else None
         )
 

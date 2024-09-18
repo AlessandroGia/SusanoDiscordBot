@@ -171,11 +171,24 @@ class VoiceState:
 
         return guild_state.voice_player.auto_queue()
 
-    async def queue(self, interaction: Interaction) -> wavelink.Queue:
+    def queue(self, interaction: Interaction) -> wavelink.Queue:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
         return guild_state.voice_player.queue()
+
+    def queues(self, interaction: Interaction) -> wavelink.Queue:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        queue: wavelink.Queue = guild_state.voice_player.queue().copy()
+        auto_queue: wavelink.Queue = guild_state.voice_player.auto_queue()
+        queue.put([track for track in auto_queue])
+
+        if queue.is_empty:
+            raise QueueEmpty
+
+        return queue
 
 
     ## ----------------- ##
@@ -201,16 +214,6 @@ class VoiceState:
             raise IllegalState
 
         await guild_state.voice_player.leave()
-
-    async def play(self, interaction: Interaction, tracks: wavelink.Search) -> None:
-        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
-            raise IllegalState
-
-        await self.__play(
-            interaction,
-            guild_state,
-            tracks
-        )
 
     async def stop(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -287,5 +290,6 @@ class VoiceState:
                 'requester_avatar': interaction.user.display_avatar.url
             }
         guild_state.voice_player.put_in_queue(tracks)
+
         if not guild_state.voice_player.get_current_track():
-            await guild_state.voice_player.play()
+            await guild_state.voice_player.play_next()

@@ -222,19 +222,6 @@ class Music(ext.commands.Cog):
     # --- --- --- --- --- ---#
 
     @app_commands.command(
-        name='reset',
-        description='Svuota la coda di riproduzione'
-    )
-    @check_voice_channel()
-    async def reset(self, interaction: Interaction):
-        await self.__VoiceState.reset(interaction)
-        await interaction.response.send_message(
-            embed=self.__embed.send('Coda resettata'),
-            ephemeral=True,
-            delete_after=5
-        )
-
-    @app_commands.command(
         name='remove',
         description='Rimuove una canzone dalla coda di riproduzione'
     )
