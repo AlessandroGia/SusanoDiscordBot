@@ -135,15 +135,14 @@ class QueueButton(Button):
 
     async def callback(self, interaction):
         queue: wavelink.Queue = self.__voice_state.queues(interaction)
-
-        track_per_page: int = 25
-
+        track_per_page: int = 10
         max_page: int = ceil(queue.count / track_per_page)
-        embed = EmbedQueue(
+        embed: EmbedQueue = EmbedQueue(
             queue.count,
             max_page,
             track_per_page
         )
+
         await interaction.response.send_message(
             embed=embed.queue(
                 queue[:track_per_page],
@@ -159,7 +158,7 @@ class QueueButton(Button):
 
 class PlayerView(View):
     def __init__(self, voice_state, guild_id: int):
-        super().__init__()
+        super().__init__(timeout=None)
         self.__embed = EmbedFactory()
         self.add_item(QueueButton(voice_state, 0))
         #self.add_item(ShuffleButton(voice_state, guild_id, 0))

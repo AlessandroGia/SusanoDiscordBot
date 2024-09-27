@@ -321,7 +321,6 @@ class Music(ext.commands.Cog):
 
     @remove.error
     @swap.error
-    @reset.error
     async def shuffle_error(self, interaction: Interaction, error: ext.commands.CommandError):
         if not await self.__check_channel(interaction, error):
             pass
