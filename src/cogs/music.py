@@ -64,26 +64,19 @@ class Music(ext.commands.Cog):
         if check_player(payload.player):
 
             if last_view := self.__VoiceState.get_last_view(payload.player.guild.id):
+                if last_mess := self.__VoiceState.get_last_mess(payload.player.guild.id):
+                    await last_mess.edit(view=None)
                 last_view.stop()
 
             channel: discord.TextChannel = await self.__bot.fetch_channel(
                 self.__VoiceState.get_channel_id(payload.player.guild.id)
             )
 
-            view = PlayerView(
-                self.__VoiceState,
-                payload.player.guild.id
-            )
+            view = PlayerView(self.__VoiceState, payload.player.guild.id)
+            mess = await channel.send(embed=self.__embed.now_playing(payload.track), view=view)
 
-            await channel.send(
-                embed=self.__embed.now_playing(payload.track),
-                view=view
-            )
-
-            self.__VoiceState.set_last_view(
-                payload.player.guild.id,
-                view
-            )
+            self.__VoiceState.set_last_mess(payload.player.guild.id, mess)
+            self.__VoiceState.set_last_view(payload.player.guild.id, view)
 
             print('Start:', payload.player.queue.history)
 
@@ -169,6 +162,9 @@ class Music(ext.commands.Cog):
         if not tracks:
             raise TrackNotFoundError
 
+        if self.__VoiceState.get_auto_play_mode(interaction.guild_id) == wavelink.AutoPlayMode.partial:
+            self.__VoiceState.set_auto_play_mode(interaction, wavelink.AutoPlayMode.enabled)
+
         if isinstance(tracks, list) and len(tracks) > 1:
             await interaction.response.send_message(
                 'Seleziona una canzone...',
@@ -184,33 +180,6 @@ class Music(ext.commands.Cog):
                 interaction,
                 tracks,
             )
-
-    @app_commands.command(
-        name='auto_fill',
-        description='Imposta la modalità di auto-riempimento della coda'
-    )
-    @app_commands.describe(
-        mode='Modalità di auto-riempimento'
-    )
-    @app_commands.choices(
-        mode=[
-            app_commands.Choice(name='Enabled', value=1),
-            app_commands.Choice(name='Disabled', value=2)
-        ]
-    )
-    @check_voice_channel()
-    async def auto_play(self, interaction: Interaction, mode: int = 0):
-        if mode:
-            mode = wavelink.AutoPlayMode.enabled if mode == 1 else wavelink.AutoPlayMode.disabled
-            self.__VoiceState.set_auto_play_mode(interaction, mode)
-        else:
-            mode = self.__VoiceState.get_auto_play_mode(interaction.guild_id)
-
-        await self.__send_message(
-            interaction,
-            f'Modalità di riproduzione automatica impostata a {mode}',
-            delete_after=5
-        )
 
     @app_commands.command(
         name='volume',

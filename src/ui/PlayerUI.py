@@ -81,6 +81,7 @@ class SkipButton(Button):
 
     async def callback(self, interaction):
         await self.__voice_state.skip(interaction)
+        self.view.clear_items()
         await interaction.response.edit_message(view=self.view)
         self.view.stop()
 
@@ -145,6 +146,7 @@ class ResetButton(Button):
 
     async def callback(self, interaction):
         await self.__voice_state.reset(interaction)
+        self.view.clear_items()
         await interaction.response.edit_message(view=self.view)
         self.view.stop()
 

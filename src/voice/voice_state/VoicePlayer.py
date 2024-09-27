@@ -72,6 +72,8 @@ class VoicePlayer:
             raise NoCurrentTrack
 
         player.queue.reset()
+        player.auto_queue.reset()
+
         await player.skip()
 
 

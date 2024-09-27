@@ -20,7 +20,10 @@ class VoiceState:
             if guild_state := self.__get_guild_state(guild_id):
                 if not guild_state.voice_player.is_connected():
                     if guild_state.last_view and not guild_state.last_view.is_finished():
+                        if guild_state.last_mess:
+                            guild_state.last_mess.edit(view=None)
                         guild_state.last_view.stop()
+
                     self.__del_guild_state(guild_id)
 
     def __del_guild_state(self, guild_id: int) -> None:
@@ -76,8 +79,17 @@ class VoiceState:
 
         return guild_state.last_view
 
+    def get_last_mess(self, guild_id: int) -> discord.Message:
+        if not (guild_state := self.__check_guild_state(guild_id)):
+            raise IllegalState
+
+        return guild_state.last_mess
+
     def set_last_view(self, guild_id: int, view: discord.ui.View) -> None:
         self.__get_guild_state(guild_id).last_view = view
+
+    def set_last_mess(self, guild_id: int, mess: discord.Message) -> None:
+        self.__get_guild_state(guild_id).last_mess = mess
 
     def get_channel_id(self, guild_id: int) -> int:
         if not (guild_state := self.__check_guild_state(guild_id)):
