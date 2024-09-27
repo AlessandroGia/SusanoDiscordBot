@@ -209,15 +209,42 @@ class VoiceState:
             )
         )
 
+    def get_auto_play_mode(self, guild_id: int) -> wavelink.AutoPlayMode:
+        if not (guild_state := self.__check_guild_state(guild_id)):
+            raise IllegalState
+
+        return guild_state.voice_player.get_auto_play_mode()
+
+    def set_auto_play_mode(self, interaction: Interaction, mode: wavelink.AutoPlayMode) -> None:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        guild_state.voice_player.set_auto_play_mode(mode)
+
+    def toggle_auto_play(self, interaction: Interaction) -> bool:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        mode = guild_state.voice_player.get_auto_play_mode()
+        new_mode = wavelink.AutoPlayMode.partial if mode == wavelink.AutoPlayMode.enabled else wavelink.AutoPlayMode.enabled
+        guild_state.voice_player.set_auto_play_mode(new_mode)
+
+        return new_mode == wavelink.AutoPlayMode.enabled
+
     async def leave(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
         await guild_state.voice_player.leave()
 
-    async def stop(self, interaction: Interaction) -> None:
+    async def reset(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
+        if guild_state.voice_player.get_queue_mode() != wavelink.QueueMode.normal:
+            guild_state.voice_player.set_queue_mode(wavelink.QueueMode.normal)
+        if guild_state.voice_player.get_auto_play_mode() != wavelink.AutoPlayMode.partial:
+            guild_state.voice_player.set_auto_play_mode(wavelink.AutoPlayMode.partial)
+            print(guild_state.voice_player.get_auto_play_mode())
 
         await guild_state.voice_player.stop()
 
@@ -232,6 +259,40 @@ class VoiceState:
             raise IllegalState
 
         await guild_state.voice_player.seek(position)
+
+    def position(self, interaction: Interaction) -> int:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        return guild_state.voice_player.position()
+
+    def history(self, interaction: Interaction) -> wavelink.Queue:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        return guild_state.voice_player.queue_history()
+
+    def queue_history(self, interaction: Interaction) -> wavelink.Queue:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        return guild_state.voice_player.queue_history()
+
+    async def play_previous(self, interaction: Interaction) -> None:
+        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
+            raise IllegalState
+
+        vc_player = guild_state.voice_player
+
+        if not vc_player.get_current_track().recommended:
+            vc_player.put_in_front_at_queue(vc_player.get_from_queue_history(-1))
+        previous_track = vc_player.get_from_queue_history(-1)
+
+        queue_mode = vc_player.get_queue_mode()
+        if queue_mode == wavelink.QueueMode.loop:
+            vc_player.set_queue_mode(wavelink.QueueMode.loop_all)
+
+        await vc_player.play_previous(previous_track)
 
 
     async def skip(self, interaction: Interaction, force: bool = True) -> None:
@@ -249,12 +310,6 @@ class VoiceState:
             raise IllegalState
 
         return guild_state.voice_player.is_shuffled()
-
-    async def reset(self, interaction: Interaction) -> None:
-        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
-            raise IllegalState
-
-        await guild_state.voice_player.reset()
 
     async def remove(self, interaction: Interaction, index: int) -> wavelink.Playable:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):

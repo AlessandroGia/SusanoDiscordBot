@@ -45,7 +45,13 @@ class BackButton(Button):
         )
 
     async def callback(self, interaction):
-        await self.__voice_state.restart(interaction)
+        if self.__voice_state.position(interaction) // 1000 > 5 or self.__voice_state.queue_history(interaction).count < 2:
+            print('1')
+            await self.__voice_state.restart(interaction)
+        else:
+            print('2')
+            await self.__voice_state.play_previous(interaction)
+
         await interaction.response.edit_message(view=self.view)
 
 class ShuffleButton(Button):
@@ -106,6 +112,28 @@ class LoopButton(Button):
 
         await interaction.response.edit_message(view=self.view)
 
+class RaccomandationButton(Button):
+    def __init__(self, voice_state, guild_id: int, row: int):
+        self.__voice_state = voice_state
+        if voice_state.get_auto_play_mode(guild_id) == wavelink.AutoPlayMode.enabled:
+            style = discord.ButtonStyle.success
+        else:
+            style = discord.ButtonStyle.secondary
+
+        super().__init__(
+            emoji="🌟",
+            style=style,
+            row=row
+        )
+
+    async def callback(self, interaction):
+        if self.__voice_state.toggle_auto_play(interaction):
+            self.style = discord.ButtonStyle.success
+        else:
+            self.style = discord.ButtonStyle.secondary
+
+        await interaction.response.edit_message(view=self.view)
+
 class ResetButton(Button):
     def __init__(self, voice_state, row: int):
         self.__voice_state = voice_state
@@ -116,10 +144,7 @@ class ResetButton(Button):
         )
 
     async def callback(self, interaction):
-        self.__voice_state.set_queue_mode(interaction, wavelink.QueueMode.normal)
-        self.__voice_state.get_player(interaction.guild_id).queue.clear()
-        await self.__voice_state.get_player(interaction.guild_id).stop()
-
+        await self.__voice_state.reset(interaction)
         await interaction.response.edit_message(view=self.view)
         self.view.stop()
 
@@ -160,13 +185,15 @@ class PlayerView(View):
     def __init__(self, voice_state, guild_id: int):
         super().__init__(timeout=None)
         self.__embed = EmbedFactory()
-        self.add_item(QueueButton(voice_state, 0))
+
         #self.add_item(ShuffleButton(voice_state, guild_id, 0))
         self.add_item(BackButton(voice_state, 0))
+        self.add_item(ResetButton(voice_state, 0))
         self.add_item(ResumePauseButton(voice_state, guild_id, 0))
-        #self.add_item(ResetButton(voice_state, 1))
         self.add_item(SkipButton(voice_state, 0))
         self.add_item(LoopButton(voice_state, guild_id, 0))
+        self.add_item(QueueButton(voice_state, 1))
+        #self.add_item(RaccomandationButton(voice_state, guild_id, 1))
 
 
 

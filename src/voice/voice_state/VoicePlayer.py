@@ -13,6 +13,12 @@ class VoicePlayer:
     def get_player(self) -> wavelink.Player:
         return self.__player
 
+    def get_auto_play_mode(self) -> wavelink.AutoPlayMode:
+        return self.__player.autoplay
+
+    def set_auto_play_mode(self, mode: wavelink.AutoPlayMode) -> None:
+        self.__player.autoplay = mode
+
     def get_current_track(self) -> Optional[wavelink.Playable]:
         return self.__player.current
 
@@ -24,6 +30,9 @@ class VoicePlayer:
 
     async def leave(self) -> None:
         await self.__player.disconnect(force=True)
+
+    def put_in_front_at_queue(self, track: wavelink.Playable) -> None:
+        self.__player.queue.put_at(0, track)
 
     def put_in_queue(self, tracks: list[wavelink.Playable] | wavelink.Playable | wavelink.Playlist) -> None:
         self.__player.queue.put(tracks)
@@ -165,8 +174,23 @@ class VoicePlayer:
     def queue(self) -> wavelink.Queue:
         return self.__player.queue
 
+    def queue_history(self) -> wavelink.Queue:
+        return self.__player.queue.history
+
+    def get_from_queue_history(self, index: int | None):
+        if index is None:
+            return self.__player.queue.history.get()
+        else:
+            return self.__player.queue.history.get_at(index)
+
     def auto_queue(self) -> wavelink.Queue:
         return self.__player.auto_queue
+
+    async def play_previous(self, track: wavelink.Playable) -> None:
+        await self.__player.play(track, replace=True)
+
+    def position(self) -> int:
+        return self.__player.position
 
     async def play_next(self) -> None:
         player: wavelink.Player = self.__player
