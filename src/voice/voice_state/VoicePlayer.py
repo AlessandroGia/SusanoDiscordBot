@@ -41,8 +41,7 @@ class VoicePlayer:
         self.__player.queue.put_at(index, track)
 
     async def skip(self, force: bool) -> None:
-        if not await self.__player.stop(force=force):
-            print("Error adadsad")
+        if not await self.__player.skip(force=force):
             raise NoCurrentTrack
 
     async def pause(self) -> None:
@@ -97,14 +96,13 @@ class VoicePlayer:
 
         await player.seek(position)
 
-    async def restart(self) -> bool:
+    async def restart(self) -> None:
         player: wavelink.Player = self.__player
 
         if not player.current:
             raise NoCurrentTrack
 
         await player.seek(0)
-        return True
 
     def get_queue_mode(self) -> wavelink.QueueMode:
         return self.__player.queue.mode
@@ -127,7 +125,7 @@ class VoicePlayer:
 
         queue.shuffle()
 
-    def unshuffle(self) -> None:
+    def un_shuffle(self) -> None:
         queue: wavelink.Queue = self.__player.queue
 
         if queue.is_empty:
@@ -137,15 +135,7 @@ class VoicePlayer:
         self.__player.queue.put(self.__original_queue[self.__original_queue.index(self.__player.current) + 1:])
         self.__original_queue = None
 
-    async def reset(self) -> None:
-        queue: wavelink.Queue = self.__player.queue
-
-        if queue.is_empty:
-            raise QueueEmpty
-
-        queue.clear()
-
-    async def remove(self, index: int) -> wavelink.Playable:
+    def remove(self, index: int) -> wavelink.Playable:
         queue: wavelink.Queue = self.__player.queue
 
         if queue.is_empty:
@@ -159,7 +149,7 @@ class VoicePlayer:
 
         return track
 
-    async def swap(self, index1: int, index2: int) -> tuple[wavelink.Playable, wavelink.Playable]:
+    def swap(self, index1: int, index2: int) -> tuple[wavelink.Playable, wavelink.Playable]:
         queue: wavelink.Queue = self.__player.queue
 
         if queue.is_empty:

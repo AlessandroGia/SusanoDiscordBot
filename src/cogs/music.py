@@ -24,12 +24,12 @@ import discord
 class Music(ext.commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.__bot: commands.Bot = bot
-        self.__VoiceState = VoiceState()
+        self.__voice_state = VoiceState()
         self.__embed = EmbedFactory()
 
     @commands.Cog.listener()
     async def on_wavelink_websocket_closed(self, payload: wavelink.WebsocketClosedEventPayload):
-        self.__VoiceState.server_clean_up()
+        self.__voice_state.server_clean_up()
 
     @commands.Cog.listener()
     async def on_wavelink_node_closed(self, node: wavelink.Node, disconnected: list[wavelink.Player]):
@@ -47,7 +47,7 @@ class Music(ext.commands.Cog):
                 payload.player.guild.id,
                 'Canzone bloccata, passando alla prossima',
             )
-            #await self.__VoiceState.play_next(payload.player.guild.id)
+            #await self.__voice_state.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
     async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload) -> None:
@@ -57,45 +57,45 @@ class Music(ext.commands.Cog):
                 payload.player.guild.id,
                 'Errore durante la riproduzione della canzone, passando alla prossima',
             )
-            #await self.__VoiceState.play_next(payload.player.guild.id)
+            #await self.__voice_state.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
         if check_player(payload.player):
 
-            if last_view := self.__VoiceState.get_last_view(payload.player.guild.id):
-                if last_mess := self.__VoiceState.get_last_mess(payload.player.guild.id):
+            if last_view := self.__voice_state.get_last_view(payload.player.guild.id):
+                if last_mess := self.__voice_state.get_last_mess(payload.player.guild.id):
                     await last_mess.edit(view=None)
                 last_view.stop()
 
             channel: discord.TextChannel = await self.__bot.fetch_channel(
-                self.__VoiceState.get_channel_id(payload.player.guild.id)
+                self.__voice_state.get_channel_id(payload.player.guild.id)
             )
 
-            view = PlayerView(self.__VoiceState, payload.player.guild.id)
+            view = PlayerView(self.__voice_state, payload.player.guild.id)
             mess = await channel.send(embed=self.__embed.now_playing(payload.track), view=view)
 
-            self.__VoiceState.set_last_mess(payload.player.guild.id, mess)
-            self.__VoiceState.set_last_view(payload.player.guild.id, view)
+            self.__voice_state.set_last_mess(payload.player.guild.id, mess)
+            self.__voice_state.set_last_view(payload.player.guild.id, view)
 
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
         if check_player(payload.player):
             print('Fine canzone', payload.track.title, 'Motivo:', payload.reason)
-            #await self.__VoiceState.play_next(payload.player.guild.id)
+            #await self.__voice_state.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
     async def on_wavelink_inactive_player(self, player: wavelink.Player):
         if check_player(player):
             channel: discord.TextChannel = await self.__bot.fetch_channel(
-                self.__VoiceState.get_channel_id(player.guild.id)
+                self.__voice_state.get_channel_id(player.guild.id)
             )
             await channel.send(
                 embed=self.__embed.send('Bot disconnesso per inattività'),
                 delete_after=5
             )
-            await self.__VoiceState.inactive_player(player.guild.id)
+            await self.__voice_state.inactive_player(player.guild.id)
 
     def __send_message(self, interaction: Interaction, message: str, ephemeral: bool = False, delete_after: int = 0):
         return interaction.response.send_message(
@@ -107,7 +107,7 @@ class Music(ext.commands.Cog):
     async def __send_error_events(self, guild_id: int, mess: str):
 
         channel: discord.TextChannel = await self.__bot.fetch_channel(
-            self.__VoiceState.get_channel_id(guild_id)
+            self.__voice_state.get_channel_id(guild_id)
         )
 
         await channel.send(
@@ -127,7 +127,7 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def join(self, interaction: Interaction):
-        await self.__VoiceState.join(interaction, )
+        await self.__voice_state.join(interaction, )
         await self.__send_message(
             interaction,
             f'Connesso al canale vocale: {interaction.user.voice.channel.name}',
@@ -140,7 +140,7 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def leave(self, interaction: Interaction):
-        await self.__VoiceState.leave(interaction)
+        await self.__voice_state.leave(interaction)
         await self.__send_message(
             interaction,
             f'Uscito dal canale vocale: {interaction.user.voice.channel.name}',
@@ -160,21 +160,20 @@ class Music(ext.commands.Cog):
         if not tracks:
             raise TrackNotFoundError
 
-        if self.__VoiceState.get_auto_play_mode(interaction.guild_id) == wavelink.AutoPlayMode.partial:
-            self.__VoiceState.set_auto_play_mode(interaction, wavelink.AutoPlayMode.enabled)
+        self.__voice_state.switch_auto_play_mode(interaction)
 
         if isinstance(tracks, list) and len(tracks) > 1:
             await interaction.response.send_message(
                 'Seleziona una canzone...',
                 view=SelectTrackView(
-                    self.__VoiceState,
+                    self.__voice_state,
                     interaction,
                     tracks,
                 ),
                 ephemeral=True
             )
         else:
-            await self.__VoiceState.play_and_send_feedback(
+            await self.__voice_state.play_and_send_feedback(
                 interaction,
                 tracks,
             )
@@ -188,7 +187,7 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def volume(self, interaction: Interaction, volume: app_commands.Range[int, 0, 1000]):
-        await self.__VoiceState.volume(interaction, volume)
+        await self.__voice_state.volume(interaction, volume)
         await self.__send_message(
             interaction,
             f'Volume impostato a {volume}',
@@ -205,7 +204,7 @@ class Music(ext.commands.Cog):
     @check_voice_channel()
     async def seek(self, interaction: Interaction, position: str):
         position = convert_time_to_ms(position)
-        await self.__VoiceState.seek(interaction, position)
+        await self.__voice_state.seek(interaction, position)
         await self.__send_message(
             interaction,
             f'Posizione cambiata a {ms_to_time(position)}',
@@ -227,7 +226,7 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def remove(self, interaction: Interaction, index: int):
-        track = await self.__VoiceState.remove(interaction, index)
+        track = self.__voice_state.remove(interaction, index)
         await interaction.response.send_message(
             embed=self.__embed.send(f"Rimosso {track.title} dalla coda di riproduzione"),
             ephemeral=True,
@@ -244,7 +243,7 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def swap(self, interaction: Interaction, index1: int, index2: int):
-        tracks = await self.__VoiceState.swap(interaction, index1, index2)
+        tracks = self.__voice_state.swap(interaction, index1, index2)
         await interaction.response.send_message(
             embed=self.__embed.send(f"Scambiato {tracks[0].title} con {tracks[1].title}"),
             ephemeral=True,

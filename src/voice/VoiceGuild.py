@@ -125,11 +125,11 @@ class VoiceState:
 
         await guild_state.voice_player.resume()
 
-    async def restart(self, interaction: Interaction) -> bool:
+    async def restart(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
-        return await guild_state.voice_player.restart()
+        await guild_state.voice_player.restart()
 
     async def toggle_pause(self, interaction: Interaction) -> bool:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -144,9 +144,9 @@ class VoiceState:
             raise IllegalState
 
         is_shuffled: bool = guild_state.voice_player.is_shuffled()
-        guild_state.voice_player.shuffle() if not is_shuffled else guild_state.voice_player.unshuffle()
+        guild_state.voice_player.shuffle() if not is_shuffled else guild_state.voice_player.un_shuffle()
         return not is_shuffled
-        # TRUE = shuffle, FALSE = unshuffle
+        # TRUE = shuffle, FALSE = un_shuffle
 
     def toggle_loop(self, interaction: Interaction) -> wavelink.QueueMode:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -214,17 +214,12 @@ class VoiceState:
             )
         )
 
-    def get_auto_play_mode(self, guild_id: int) -> wavelink.AutoPlayMode:
-        if not (guild_state := self.__check_guild_state(guild_id)):
-            raise IllegalState
-
-        return guild_state.voice_player.get_auto_play_mode()
-
-    def set_auto_play_mode(self, interaction: Interaction, mode: wavelink.AutoPlayMode) -> None:
+    def switch_auto_play_mode(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
-        guild_state.voice_player.set_auto_play_mode(mode)
+        if guild_state.voice_player.get_auto_play_mode() == wavelink.AutoPlayMode.partial:
+            guild_state.voice_player.set_auto_play_mode(wavelink.AutoPlayMode.enabled)
 
     async def leave(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -299,17 +294,17 @@ class VoiceState:
 
         return guild_state.voice_player.is_shuffled()
 
-    async def remove(self, interaction: Interaction, index: int) -> wavelink.Playable:
+    def remove(self, interaction: Interaction, index: int) -> wavelink.Playable:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
-        return await guild_state.voice_player.remove(index)
+        return guild_state.voice_player.remove(index)
 
-    async def swap(self, interaction: Interaction, index1: int, index2: int) -> tuple[wavelink.Playable, wavelink.Playable]:
+    def swap(self, interaction: Interaction, index1: int, index2: int) -> tuple[wavelink.Playable, wavelink.Playable]:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
 
-        return await guild_state.voice_player.swap(index1, index2)
+        return guild_state.voice_player.swap(index1, index2)
 
     async def play_next(self, guild_id: int) -> None:
         if not (guild_state := self.__check_guild_state(guild_id)):
