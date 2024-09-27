@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "susanomusicbot"
-version = "1.2.0"
+version = "1.2.1"
 description = ""
 authors = ["alessandrogia <alexgiacento@gmail.com>"]
 readme = "README.md"

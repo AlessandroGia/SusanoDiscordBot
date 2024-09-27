@@ -65,7 +65,7 @@ class VoicePlayer:
 
         await self.__player.pause(False)
 
-    async def stop(self) -> None:
+    async def reset(self) -> None:
         player: wavelink.Player = self.__player
 
         if not player.current:

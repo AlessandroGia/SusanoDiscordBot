@@ -42,7 +42,7 @@ class Music(ext.commands.Cog):
     @commands.Cog.listener()
     async def on_wavelink_track_stuck(self, payload: wavelink.TrackStuckEventPayload) -> None:
         if check_player(payload.player):
-            print("track stuck:", payload.threshold, payload.track.title)
+            print("Track stuck:", payload.threshold, payload.track.title)
             await self.__send_error_events(
                 payload.player.guild.id,
                 'Canzone bloccata, passando alla prossima',
@@ -52,7 +52,7 @@ class Music(ext.commands.Cog):
     @commands.Cog.listener()
     async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload) -> None:
         if check_player(payload.player):
-            print("track exception:", payload.exception, payload.track.title)
+            print("Track exception:", payload.exception, payload.track.title)
             await self.__send_error_events(
                 payload.player.guild.id,
                 'Errore durante la riproduzione della canzone, passando alla prossima',
@@ -78,13 +78,11 @@ class Music(ext.commands.Cog):
             self.__VoiceState.set_last_mess(payload.player.guild.id, mess)
             self.__VoiceState.set_last_view(payload.player.guild.id, view)
 
-            print('Start:', payload.player.queue.history)
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
         if check_player(payload.player):
-            print("End:", payload.player.queue.history)
-            print('Fine canzone', payload.track.title, payload.reason)
+            print('Fine canzone', payload.track.title, 'Motivo:', payload.reason)
             #await self.__VoiceState.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
@@ -129,7 +127,7 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def join(self, interaction: Interaction):
-        await self.__VoiceState.join(interaction)
+        await self.__VoiceState.join(interaction, )
         await self.__send_message(
             interaction,
             f'Connesso al canale vocale: {interaction.user.voice.channel.name}',

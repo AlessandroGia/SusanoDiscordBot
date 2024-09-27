@@ -16,15 +16,14 @@ class VoiceState:
         self.__embed = EmbedFactory()
 
     def server_clean_up(self) -> None:
-        for guild_id in list(self.__guild_state.keys()):
-            if guild_state := self.__get_guild_state(guild_id):
-                if not guild_state.voice_player.is_connected():
-                    if guild_state.last_view and not guild_state.last_view.is_finished():
-                        if guild_state.last_mess:
-                            guild_state.last_mess.edit(view=None)
-                        guild_state.last_view.stop()
+        for guild_id in self.__guild_state.keys():
+            if (guild_state := self.__get_guild_state(guild_id)) and not guild_state.voice_player.is_connected():
+                if guild_state.last_view and not guild_state.last_view.is_finished():
+                    if guild_state.last_mess:
+                        guild_state.last_mess.edit(view=None)
+                    guild_state.last_view.stop()
 
-                    self.__del_guild_state(guild_id)
+                self.__del_guild_state(guild_id)
 
     def __del_guild_state(self, guild_id: int) -> None:
         self.__guild_state.pop(guild_id)
@@ -171,12 +170,6 @@ class VoiceState:
 
         return guild_state.voice_player.get_queue_mode()
 
-    def set_queue_mode(self, interaction: Interaction, mode: wavelink.QueueMode) -> None:
-        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
-            raise IllegalState
-
-        guild_state.voice_player.set_queue_mode(mode)
-
     def auto_queue(self, interaction: Interaction) -> wavelink.Queue:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
@@ -206,12 +199,12 @@ class VoiceState:
     ## ----------------- ##
     ## ----------------- ##
 
-    async def join(self, interaction: Interaction) -> None:
+    async def join(self, interaction: Interaction, inactive_time: int = 180) -> None:
         player: wavelink.Player = await interaction.user.voice.channel.connect(
             self_deaf=True,
-            cls=wavelink.Player
+            cls=wavelink.Player,
         )
-        player.inactive_timeout = 180
+        player.inactive_timeout = inactive_time
         player.autoplay = wavelink.AutoPlayMode.enabled
         self.__set_guild_state(
             interaction.guild_id,
@@ -233,16 +226,6 @@ class VoiceState:
 
         guild_state.voice_player.set_auto_play_mode(mode)
 
-    def toggle_auto_play(self, interaction: Interaction) -> bool:
-        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
-            raise IllegalState
-
-        mode = guild_state.voice_player.get_auto_play_mode()
-        new_mode = wavelink.AutoPlayMode.partial if mode == wavelink.AutoPlayMode.enabled else wavelink.AutoPlayMode.enabled
-        guild_state.voice_player.set_auto_play_mode(new_mode)
-
-        return new_mode == wavelink.AutoPlayMode.enabled
-
     async def leave(self, interaction: Interaction) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
             raise IllegalState
@@ -258,7 +241,7 @@ class VoiceState:
             guild_state.voice_player.set_auto_play_mode(wavelink.AutoPlayMode.partial)
             print(guild_state.voice_player.get_auto_play_mode())
 
-        await guild_state.voice_player.stop()
+        await guild_state.voice_player.reset()
 
     async def volume(self, interaction: Interaction, volume: int) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -277,12 +260,6 @@ class VoiceState:
             raise IllegalState
 
         return guild_state.voice_player.position()
-
-    def history(self, interaction: Interaction) -> wavelink.Queue:
-        if not (guild_state := self.__check_guild_state(interaction.guild_id)):
-            raise IllegalState
-
-        return guild_state.voice_player.queue_history()
 
     def queue_history(self, interaction: Interaction) -> wavelink.Queue:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):
@@ -305,7 +282,6 @@ class VoiceState:
             vc_player.set_queue_mode(wavelink.QueueMode.loop_all)
 
         await vc_player.play_previous(previous_track)
-
 
     async def skip(self, interaction: Interaction, force: bool = True) -> None:
         if not (guild_state := self.__check_guild_state(interaction.guild_id)):

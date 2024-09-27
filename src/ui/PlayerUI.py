@@ -46,10 +46,8 @@ class BackButton(Button):
 
     async def callback(self, interaction):
         if self.__voice_state.position(interaction) // 1000 > 5 or self.__voice_state.queue_history(interaction).count < 2:
-            print('1')
             await self.__voice_state.restart(interaction)
         else:
-            print('2')
             await self.__voice_state.play_previous(interaction)
 
         await interaction.response.edit_message(view=self.view)
@@ -81,8 +79,7 @@ class SkipButton(Button):
 
     async def callback(self, interaction):
         await self.__voice_state.skip(interaction)
-        self.view.clear_items()
-        await interaction.response.edit_message(view=self.view)
+        await interaction.response.edit_message(view=None)
         self.view.stop()
 
 class LoopButton(Button):
@@ -113,28 +110,6 @@ class LoopButton(Button):
 
         await interaction.response.edit_message(view=self.view)
 
-class RaccomandationButton(Button):
-    def __init__(self, voice_state, guild_id: int, row: int):
-        self.__voice_state = voice_state
-        if voice_state.get_auto_play_mode(guild_id) == wavelink.AutoPlayMode.enabled:
-            style = discord.ButtonStyle.success
-        else:
-            style = discord.ButtonStyle.secondary
-
-        super().__init__(
-            emoji="🌟",
-            style=style,
-            row=row
-        )
-
-    async def callback(self, interaction):
-        if self.__voice_state.toggle_auto_play(interaction):
-            self.style = discord.ButtonStyle.success
-        else:
-            self.style = discord.ButtonStyle.secondary
-
-        await interaction.response.edit_message(view=self.view)
-
 class ResetButton(Button):
     def __init__(self, voice_state, row: int):
         self.__voice_state = voice_state
@@ -146,8 +121,7 @@ class ResetButton(Button):
 
     async def callback(self, interaction):
         await self.__voice_state.reset(interaction)
-        self.view.clear_items()
-        await interaction.response.edit_message(view=self.view)
+        await interaction.response.edit_message(view=None)
         self.view.stop()
 
 class QueueButton(Button):
@@ -195,8 +169,6 @@ class PlayerView(View):
         self.add_item(SkipButton(voice_state, 0))
         self.add_item(LoopButton(voice_state, guild_id, 0))
         self.add_item(QueueButton(voice_state, 1))
-        #self.add_item(RaccomandationButton(voice_state, guild_id, 1))
-
 
 
     def __send_error(self, interaction: Interaction, error: str):
