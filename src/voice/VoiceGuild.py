@@ -3,6 +3,7 @@ from discord import Interaction
 from typing import Optional
 
 import wavelink
+from wavelink import Playlist
 
 from src.exceptions.PlayerExceptions import IllegalState
 from src.exceptions.QueueException import QueueEmpty
@@ -39,15 +40,23 @@ class VoiceState:
             raise IllegalState
 
         current = guild_state.voice_player.get_current_track()
+        _type = type(tracks)
+        print(_type)
         if current:
             await interaction.response.send_message(
                 embed=self.__embed.added_to_queue(tracks, interaction.user),
                 ephemeral=True
             )
         else:
-            await interaction.response.send_message(
-                "Caricamento in corso...",
-            )
+            if len(tracks) > 1:
+                await interaction.response.send_message(
+                    embed=self.__embed.added_to_queue(tracks, interaction.user, True),
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    "Caricamento in corso...",
+                )
 
         await self.__play(
             interaction,
@@ -55,7 +64,7 @@ class VoiceState:
             tracks,
         )
 
-        if not current:
+        if not current and len(tracks) <= 1:
             await interaction.delete_original_response()
 
 

@@ -79,12 +79,12 @@ class EmbedFactory:
 
         return embed
 
-    def added_to_queue(self, tracks: wavelink.Search, author: User) -> discord.Embed:
+    def added_to_queue(self, tracks: wavelink.Search, author: User, skip_first_track: bool = False) -> discord.Embed:
 
         if isinstance(tracks, wavelink.Playlist):
-            embed = self.__added_to_queue_playlist(tracks)
+            embed = self.__added_to_queue_playlist(tracks, skip_first_track)
         else:
-            embed = self.__added_to_queue_list(tracks)
+            embed = self.__added_to_queue_list(tracks, skip_first_track)
 
         embed.set_author(
             name=self.__bot_name,
@@ -97,7 +97,7 @@ class EmbedFactory:
         return embed
 
     @staticmethod
-    def __added_to_queue_playlist(tracks: wavelink.Playlist) -> discord.Embed:
+    def __added_to_queue_playlist(tracks: wavelink.Playlist, skip_first_track: bool) -> discord.Embed:
 
         embed = discord.Embed(
             title="📀 Playlist aggiunta alla coda",
@@ -113,16 +113,21 @@ class EmbedFactory:
             inline=True
         ) if tracks.author else None
 
+        num_tracks = len(tracks.tracks) if not skip_first_track else len(tracks.tracks) - 1
+
         embed.add_field(
-            name="🎵 Aggiunte:" if len(tracks.tracks) > 1 else "🎵 Aggiunta:",
-            value=f"***{len(tracks.tracks)} {'tracce' if len(tracks.tracks) > 1 else 'traccia'}***",
+            name="🎵 Aggiunte:" if num_tracks > 1 else "🎵 Aggiunta:",
+            value=f"***{num_tracks} {'tracce' if num_tracks > 1 else 'traccia'}***",
             inline=True
         )
 
         return embed
 
     @staticmethod
-    def __added_to_queue_list(tracks: wavelink.Search) -> discord.Embed:
+    def __added_to_queue_list(tracks: wavelink.Search, skip_first_track: bool) -> discord.Embed:
+
+        if skip_first_track:
+            tracks = tracks[1:]
 
         embed = discord.Embed(
             title="📋 Tracce aggiunte alla coda" if len(tracks) > 1 else "📋 Traccia aggiunta alla coda",
