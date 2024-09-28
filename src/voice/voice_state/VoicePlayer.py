@@ -201,9 +201,5 @@ class VoicePlayer:
         if self.__original_queue is not None:
             self.__original_queue = None
 
-
-
-
-
     async def inactive_player(self) -> None:
         await self.leave()

@@ -2,8 +2,7 @@ from discord import Object, Interaction, app_commands, ext
 from discord.ext import commands
 
 from src.exceptions.Generic import InvalidFormat
-from src.ui.PlayerUI import PlayerView
-from src.ui.QueueUI import QueueView
+from src.ui.player.player import PlayerView
 from src.ui.SelectUI import SelectTrackView
 
 from src.exceptions.PlayerExceptions import *
