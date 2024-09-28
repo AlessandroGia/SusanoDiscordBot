@@ -1,14 +1,11 @@
-from enum import Enum
 from typing import Any
 
 import discord.ui
 import wavelink
-from aiohttp.web_routedef import delete
 from discord import Interaction
 from discord.ui import Button, View, Item
 from math import ceil
 
-from discord.webhook.async_ import interaction_response_params
 
 from src.exceptions.QueueException import *
 from src.exceptions.VoiceChannelExceptions import *
@@ -35,6 +32,7 @@ class ResumePauseButton(Button):
         self.emoji = "▶️" if state else "⏸️"
         await interaction.response.edit_message(view=self.view)
 
+
 class BackButton(Button):
     def __init__(self, voice_state, row: int):
         self.__voice_state = voice_state
@@ -55,7 +53,6 @@ class BackButton(Button):
         await interaction.response.edit_message(view=view)
 
 
-
 class ShuffleButton(Button):
     def __init__(self, voice_state, guild_id: int, row: int):
         self.__voice_state = voice_state
@@ -71,6 +68,7 @@ class ShuffleButton(Button):
         self.style = discord.ButtonStyle.success if is_shuffled else discord.ButtonStyle.secondary
         await interaction.response.edit_message(view=self.view)
 
+
 class SkipButton(Button):
     def __init__(self, voice_state, row: int):
         self.__voice_state = voice_state
@@ -85,6 +83,7 @@ class SkipButton(Button):
         await self.__voice_state.skip(interaction)
         await interaction.response.edit_message(view=None)
         self.view.stop()
+
 
 class LoopButton(Button):
     def __init__(self, voice_state, guild_id: int, row: int):
