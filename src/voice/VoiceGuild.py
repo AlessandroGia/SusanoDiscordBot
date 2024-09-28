@@ -40,8 +40,7 @@ class VoiceState:
             raise IllegalState
 
         current = guild_state.voice_player.get_current_track()
-        _type = type(tracks)
-        print(_type)
+
         if current:
             await interaction.response.send_message(
                 embed=self.__embed.added_to_queue(tracks, interaction.user),
