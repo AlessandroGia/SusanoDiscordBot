@@ -91,7 +91,7 @@ class EmbedFactory:
             icon_url=self.__icon_url
         )
         embed.set_footer(
-            text=author.name,
+            text=author.display_name,
             icon_url=author.display_avatar
         )
         return embed
