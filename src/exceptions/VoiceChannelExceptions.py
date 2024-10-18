@@ -1,17 +1,17 @@
 from discord.app_commands import AppCommandError
 
 
-class UserNonConnessoError(AppCommandError):
+class UserNotInVoiceChannel(AppCommandError):
     pass
 
 
-class BotGiaConnessoError(AppCommandError):
+class BotNotInVoiceChannel(AppCommandError):
     pass
 
 
-class BotNonPresenteError(AppCommandError):
+class UserNotInSameVoiceChannel(AppCommandError):
     pass
 
 
-class UserNonStessoCanaleBotError(AppCommandError):
+class BotAlreadyInVoiceChannel(AppCommandError):
     pass

@@ -11,18 +11,18 @@ def check_voice_channel():
     def predicate(interaction: Interaction) -> bool:
 
         if not interaction.user.voice:
-            raise UserNonConnessoError
+            raise UserNotInVoiceChannel
 
         if interaction.command.name == 'join':
             if __channel_connected_to(interaction):
-                raise BotGiaConnessoError
+                raise BotAlreadyInVoiceChannel
 
         else:
             if not __channel_connected_to(interaction):
-                raise BotNonPresenteError
+                raise BotNotInVoiceChannel
 
             if not interaction.user.voice.channel == __channel_connected_to(interaction).channel:
-                raise UserNonStessoCanaleBotError
+                raise UserNotInSameVoiceChannel
 
         return True
     return app_commands.check(predicate)

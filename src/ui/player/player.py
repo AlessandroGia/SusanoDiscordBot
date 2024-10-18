@@ -41,11 +41,11 @@ class PlayerView(View):
 
     async def on_error(self, interaction: Interaction, error: Exception, item: Item[Any], /) -> None:
 
-        if isinstance(error, UserNonConnessoError):
+        if isinstance(error, UserNotInVoiceChannel):
             await self.__send_error(interaction, 'Devi essere connesso a un canale vocale')
-        elif isinstance(error, BotNonPresenteError):
+        elif isinstance(error, BotNotInVoiceChannel):
             await self.__send_error(interaction, 'Il bot non è connesso a un canale vocale')
-        elif isinstance(error, UserNonStessoCanaleBotError):
+        elif isinstance(error, UserNotInSameVoiceChannel):
             await self.__send_error(interaction, 'Devi essere nello stesso canale vocale del bot')
 
         elif isinstance(error, IllegalState):

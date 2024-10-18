@@ -261,11 +261,11 @@ class Music(ext.commands.Cog):
     # --- PLAYER ERROR HANDLING --- #
 
     async def __check_channel(self, interaction: Interaction, error: ext.commands.CommandError) -> bool:
-        if isinstance(error, UserNonConnessoError):
+        if isinstance(error, UserNotInVoiceChannel):
             await self.__send_error(interaction, 'Devi essere connesso a un canale vocale')
-        elif isinstance(error, BotNonPresenteError):
+        elif isinstance(error, BotNotInVoiceChannel):
             await self.__send_error(interaction, 'Il bot non è connesso a un canale vocale')
-        elif isinstance(error, UserNonStessoCanaleBotError):
+        elif isinstance(error, UserNotInSameVoiceChannel):
             await self.__send_error(interaction, 'Devi essere nello stesso canale vocale del bot')
         elif isinstance(error, IllegalState):
             await self.__send_error(interaction, 'Comando non valido')
@@ -303,9 +303,9 @@ class Music(ext.commands.Cog):
 
     @join.error
     async def join_error(self, interaction: Interaction, error: ext.commands.CommandError):
-        if isinstance(error, UserNonConnessoError):
+        if isinstance(error, UserNotInVoiceChannel):
             await self.__send_error(interaction, 'Devi essere connesso a un canale vocale')
-        elif isinstance(error, BotGiaConnessoError):
+        elif isinstance(error, BotAlreadyInVoiceChannel):
             await self.__send_error(interaction, 'Il bot è già connesso a un canale vocale')
         else:
             print(error)
