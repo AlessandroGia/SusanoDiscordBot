@@ -7,12 +7,10 @@ from src.voice.VoiceGuild import VoiceState
 import wavelink
 import discord
 
-from src.exceptions.PlayerExceptions import IllegalState
 from src.utils.embed import EmbedFactory
 from src.utils.utils import convert_time
 
-
-class SelectTrackDropdown(Select):
+class Tracks(Select):
     def __init__(
             self,
             voice_state: VoiceState,
@@ -71,35 +69,3 @@ class SelectTrackDropdown(Select):
             interaction,
             tracks,
         )
-
-
-class SelectTrackView(View):
-    def __init__(
-            self,
-            voice_state: VoiceState,
-            interaction: discord.Interaction,
-            tracks: list[wavelink.Playable]):
-        super().__init__()
-        self.add_item(
-            SelectTrackDropdown(
-                voice_state,
-                interaction,
-                tracks
-            )
-        )
-        self.__embed = EmbedFactory()
-
-    def __send_error(self, interaction: Interaction, error: str):
-        return interaction.response.send_message(
-            embed=self.__embed.error(error),
-            ephemeral=True,
-            delete_after=5
-        )
-
-    async def on_error(self, interaction: Interaction, error: Exception, item: Item[Any], /) -> None:
-        if isinstance(error, IllegalState):
-            await self.__send_error(interaction, 'Comando non valido')
-        else:
-            print(f"SelectTrackView.on_error error: {error}")
-            await self.__send_error(interaction, 'Errore sconosciuto')
-

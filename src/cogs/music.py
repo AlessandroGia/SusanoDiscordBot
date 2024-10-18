@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from src.exceptions.Generic import InvalidFormat
 from src.ui.player.player import PlayerView
-from src.ui.SelectUI import SelectTrackView
+from src.ui.select import SelectTrackView
 
 from src.exceptions.PlayerExceptions import *
 from src.exceptions.QueueException import *
