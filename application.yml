@@ -16,12 +16,10 @@ plugins:
     # Clients are queried in the order they are given (so the first client is queried first and so on...)
     clients:
       - MUSIC
+      - WEB
       - WEBEMBEDDED
       - ANDROID_MUSIC
-      - ANDROID_TESTSUITE
-      - WEB
       - TVHTML5EMBEDDED
-      - MEDIA_CONNECT
 
     # You can configure individual clients with the following.
     # Any options or clients left unspecified will use their default values
@@ -31,7 +29,7 @@ plugins:
 
 lavalink:
   plugins:
-     - dependency: "dev.lavalink.youtube:youtube-plugin:1.8.0"
+     - dependency: "dev.lavalink.youtube:youtube-plugin:1.11.1"
 #    - dependency: "com.github.example:example-plugin:1.0.0" # required, the coordinates of your plugin
 #      repository: "https://maven.example.com/releases" # optional, defaults to the Lavalink releases repository by default
 #      snapshot: false # optional, defaults to false, used to tell Lavalink to use the snapshot repository instead of the release repository

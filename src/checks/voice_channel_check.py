@@ -1,6 +1,11 @@
+"""
+This module contains the voice channel check functions for the SusanoMusicBot.
+"""
+
 from discord import app_commands, utils, Interaction
 
-from src.exceptions.VoiceChannelExceptions import *
+from src.exceptions.voice_channel_exceptions import (UserNotInVoiceChannel,
+    BotAlreadyInVoiceChannel, BotNotInVoiceChannel, UserNotInSameVoiceChannel)
 
 
 def __channel_connected_to(interaction: Interaction):
@@ -8,6 +13,10 @@ def __channel_connected_to(interaction: Interaction):
 
 
 def check_voice_channel():
+    """
+    Check if the user is in a voice channel and if the bot is in the same voice channel.
+    :return:
+    """
     def predicate(interaction: Interaction) -> bool:
 
         if not interaction.user.voice:

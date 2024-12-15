@@ -5,13 +5,13 @@ import wavelink
 from discord import Interaction
 from discord.ui import Button
 
-from src.ui.queue import QueueView
+from src.music_ui.queue.queue_view import QueueView
 from src.utils.embed import EmbedQueue, EmbedFactory
-from src.voice.VoiceGuild import VoiceState
+from src.voice.guild_voice_state import GuildVoiceState
 
 
 class Queue(Button):
-    def __init__(self, voice_state: VoiceState, row: int):
+    def __init__(self, voice_state: GuildVoiceState, row: int):
         self.__voice_state = voice_state
         self.__embed = EmbedFactory()
 

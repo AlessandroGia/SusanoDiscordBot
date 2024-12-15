@@ -2,20 +2,20 @@ from discord import Interaction
 from discord._types import ClientT
 from discord.ui import Button, View, Select, Item
 from typing import Callable, Coroutine, Any, Optional
-from src.voice.VoiceGuild import VoiceState
+from src.voice.guild_voice_state import GuildVoiceState
 
 import wavelink
 import discord
 
-from src.exceptions.PlayerExceptions import IllegalState
+from src.exceptions.player_exceptions import IllegalState
 from src.utils.embed import EmbedFactory
-from src.ui.select.items.dropdowns.tracks import Tracks
+from src.music_ui.track_select.items.dropdowns.tracks import Tracks
 
 
 class SelectTrackView(View):
     def __init__(
             self,
-            voice_state: VoiceState,
+            voice_state: GuildVoiceState,
             interaction: discord.Interaction,
             tracks: list[wavelink.Playable]):
         super().__init__()

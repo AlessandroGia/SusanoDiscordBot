@@ -2,20 +2,20 @@ import discord
 from discord import Interaction
 from discord.ui import Button
 
-from src.voice.VoiceGuild import VoiceState
+from src.voice.guild_voice_state import GuildVoiceState
 
 
-class Skip(Button):
-    def __init__(self, voice_state: VoiceState, row: int):
+class Reset(Button):
+    def __init__(self, voice_state: GuildVoiceState, row: int):
         self.__voice_state = voice_state
 
         super().__init__(
-            emoji="⏭️",
-            style=discord.ButtonStyle.secondary,
+            emoji="⏹️",
+            style=discord.ButtonStyle.danger,
             row=row
         )
 
     async def callback(self, interaction: Interaction):
-        await self.__voice_state.skip(interaction)
+        await self.__voice_state.reset(interaction)
         await interaction.response.edit_message(view=None)
         self.view.stop()

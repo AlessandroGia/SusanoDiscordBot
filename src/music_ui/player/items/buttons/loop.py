@@ -3,11 +3,11 @@ from discord import Interaction
 from discord.ui import Button
 import wavelink
 
-from src.voice.VoiceGuild import VoiceState
+from src.voice.guild_voice_state import GuildVoiceState
 
 
 class Loop(Button):
-    def __init__(self, voice_state: VoiceState, guild_id: int, row: int):
+    def __init__(self, voice_state: GuildVoiceState, guild_id: int, row: int):
         self.__voice_state = voice_state
         queue_mode = self.__voice_state.get_queue_mode(guild_id)
 

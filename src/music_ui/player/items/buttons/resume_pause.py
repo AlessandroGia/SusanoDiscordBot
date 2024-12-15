@@ -2,11 +2,11 @@ import discord
 from discord import Interaction
 from discord.ui import Button
 
-from src.voice.VoiceGuild import VoiceState
+from src.voice.guild_voice_state import GuildVoiceState
 
 
 class ResumePause(Button):
-    def __init__(self, voice_state: VoiceState, guild_id: int, row: int):
+    def __init__(self, voice_state: GuildVoiceState, guild_id: int, row: int):
         self.__voice_state = voice_state
         emoji = "▶️" if self.__voice_state.is_paused(guild_id) else "⏸️"
 

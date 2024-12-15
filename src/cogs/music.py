@@ -1,45 +1,76 @@
+"""
+This module contains the music commands and event listeners for the SusanoMusicBot.
+"""
+
 from discord import Object, Interaction, app_commands, ext
 from discord.ext import commands
-
-from src.exceptions.Generic import InvalidFormat
-from src.ui.player.player import PlayerView
-from src.ui.select import SelectTrackView
-
-from src.exceptions.PlayerExceptions import *
-from src.exceptions.QueueException import *
-from src.exceptions.TrackPlayerExceptions import *
-from src.exceptions.VoiceChannelExceptions import *
-
-from src.checks.VoiceChannelChecks import check_voice_channel
-
-from src.utils.utils import check_player, convert_time_to_ms, ms_to_time
-from src.utils.embed import EmbedFactory
-from src.voice.VoiceGuild import VoiceState
-
 import wavelink
 import discord
 
+from src.music_ui.player.player_view import PlayerView
+from src.music_ui.track_select.track_select_view import SelectTrackView
+
+from src.utils.utils import check_player
+from src.utils.embed import EmbedFactory
+
+from src.checks.voice_channel_check import check_voice_channel
+
+from src.voice.guild_voice_state import GuildVoiceState
+
+from src.exceptions.player_exceptions import TrackNotFound, IllegalState
+from src.exceptions.voice_channel_exceptions import (
+    UserNotInVoiceChannel,
+    BotAlreadyInVoiceChannel,
+    BotNotInVoiceChannel,
+    UserNotInSameVoiceChannel
+)
 
 class Music(ext.commands.Cog):
+    """
+    The Music cog for the SusanoMusicBot.
+    """
     def __init__(self, bot: commands.Bot):
         self.__bot: commands.Bot = bot
-        self.__voice_state = VoiceState()
+        self.__voice_state = GuildVoiceState()
         self.__embed = EmbedFactory()
 
     @commands.Cog.listener()
     async def on_wavelink_websocket_closed(self, payload: wavelink.WebsocketClosedEventPayload):
+        """
+        Event listener for the wavelink websocket closed event.
+
+        Args:
+            payload:
+
+        Returns:
+
+        """
         self.__voice_state.server_clean_up()
 
     @commands.Cog.listener()
-    async def on_wavelink_node_closed(self, node: wavelink.Node, disconnected: list[wavelink.Player]):
-        pass
-
-    @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload) -> None:
+        """
+        Event listener for the wavelink node ready event
+
+        Args:
+            payload:
+
+        Returns:
+
+        """
         print(f"Nodo {payload.node!r} is ready!")
 
     @commands.Cog.listener()
     async def on_wavelink_track_stuck(self, payload: wavelink.TrackStuckEventPayload) -> None:
+        """
+        Event listener for the wavelink track stuck event.
+
+        Args:
+            payload:
+
+        Returns:
+
+        """
         if check_player(payload.player):
             print("Track stuck:", payload.threshold, payload.track.title)
             await self.__send_error_events(
@@ -50,6 +81,15 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload) -> None:
+        """
+        Event listener for the wavelink track exception event.
+
+        Args:
+            payload:
+
+        Returns:
+
+        """
         if check_player(payload.player):
             print("Track exception:", payload.exception, payload.track.title)
             await self.__send_error_events(
@@ -60,6 +100,15 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload) -> None:
+        """
+        Event listener for the wavelink track start event
+
+        Args:
+            payload:
+
+        Returns:
+
+        """
         if check_player(payload.player):
 
             if last_view := self.__voice_state.get_last_view(payload.player.guild.id):
@@ -80,12 +129,30 @@ class Music(ext.commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
+        """
+        Event listener for the wavelink track end event.
+
+        Args:
+            payload:
+
+        Returns:
+
+        """
         if check_player(payload.player):
             print('Fine canzone', payload.track.title, 'Motivo:', payload.reason)
             #await self.__voice_state.play_next(payload.player.guild.id)
 
     @commands.Cog.listener()
     async def on_wavelink_inactive_player(self, player: wavelink.Player):
+        """
+        Event listener for the wavelink inactive player event.
+
+        Args:
+            player:
+
+        Returns:
+
+        """
         if check_player(player):
             channel: discord.TextChannel = await self.__bot.fetch_channel(
                 self.__voice_state.get_channel_id(player.guild.id)
@@ -103,8 +170,17 @@ class Music(ext.commands.Cog):
             delete_after=delete_after
         )
 
-    async def __send_error_events(self, guild_id: int, mess: str):
+    async def __send_error_events(self, guild_id: int, mess: str) -> None:
+        """
+        Send an error message to the channel.
 
+        Args:
+            guild_id (int): The guild id.
+            mess (str): The message to send.
+
+        Returns:
+            None
+        """
         channel: discord.TextChannel = await self.__bot.fetch_channel(
             self.__voice_state.get_channel_id(guild_id)
         )
@@ -126,7 +202,16 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def join(self, interaction: Interaction):
-        await self.__voice_state.join(interaction, )
+        """
+        Command to make the bot join the voice channel.
+
+        Args:
+            interaction:
+
+        Returns:
+
+        """
+        await self.__voice_state.join(interaction)
         await self.__send_message(
             interaction,
             f'Connesso al canale vocale: {interaction.user.voice.channel.name}',
@@ -139,6 +224,15 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def leave(self, interaction: Interaction):
+        """
+        Command to make the bot leave the voice channel.
+
+        Args:
+            interaction:
+
+        Returns:
+
+        """
         await self.__voice_state.leave(interaction)
         await self.__send_message(
             interaction,
@@ -155,9 +249,19 @@ class Music(ext.commands.Cog):
     )
     @check_voice_channel()
     async def play(self, interaction: Interaction, search: str):
+        """
+        Command to play a song.
+
+        Args:
+            interaction:
+            search:
+
+        Returns:
+
+        """
         tracks: wavelink.Search = await wavelink.Playable.search(search)
         if not tracks:
-            raise TrackNotFoundError
+            raise TrackNotFound
 
         self.__voice_state.switch_auto_play_mode(interaction)
 
@@ -177,78 +281,6 @@ class Music(ext.commands.Cog):
                 tracks,
             )
 
-    @app_commands.command(
-        name='volume',
-        description='Imposta il volume della canzone'
-    )
-    @app_commands.describe(
-        volume='Valore da 0 a 1000'
-    )
-    @check_voice_channel()
-    async def volume(self, interaction: Interaction, volume: app_commands.Range[int, 0, 1000]):
-        await self.__voice_state.volume(interaction, volume)
-        await self.__send_message(
-            interaction,
-            f'Volume impostato a {volume}',
-            delete_after=5
-        )
-
-    @app_commands.command(
-        name='seek',
-        description='Cambia la posizione della canzone'
-    )
-    @app_commands.describe(
-        position='Posizione in formato hh:mm:ss oppure in secondi'
-    )
-    @check_voice_channel()
-    async def seek(self, interaction: Interaction, position: str):
-        position = convert_time_to_ms(position)
-        await self.__voice_state.seek(interaction, position)
-        await self.__send_message(
-            interaction,
-            f'Posizione cambiata a {ms_to_time(position)}',
-            delete_after=5
-        )
-
-    # --- --- --- --- --- ---#
-    #                        #
-    # --- QUEUE COMMANDS --- #
-    #                        #
-    # --- --- --- --- --- ---#
-
-    @app_commands.command(
-        name='remove',
-        description='Rimuove una canzone dalla coda di riproduzione'
-    )
-    @app_commands.describe(
-        index='Indice della canzone da rimuovere'
-    )
-    @check_voice_channel()
-    async def remove(self, interaction: Interaction, index: int):
-        track = self.__voice_state.remove(interaction, index)
-        await interaction.response.send_message(
-            embed=self.__embed.send(f"Rimosso {track.title} dalla coda di riproduzione"),
-            ephemeral=True,
-            delete_after=5
-        )
-
-    @app_commands.command(
-        name='swap',
-        description='Scambia due canzoni nella coda di riproduzione'
-    )
-    @app_commands.describe(
-        index1='Indice della prima canzone',
-        index2='Indice della seconda canzone'
-    )
-    @check_voice_channel()
-    async def swap(self, interaction: Interaction, index1: int, index2: int):
-        tracks = self.__voice_state.swap(interaction, index1, index2)
-        await interaction.response.send_message(
-            embed=self.__embed.send(f"Scambiato {tracks[0].title} con {tracks[1].title}"),
-            ephemeral=True,
-            delete_after=5
-        )
-
     # --- CHECKS --- #
 
     def __send_error(self, interaction: Interaction, error: str):
@@ -261,6 +293,16 @@ class Music(ext.commands.Cog):
     # --- PLAYER ERROR HANDLING --- #
 
     async def __check_channel(self, interaction: Interaction, error: ext.commands.CommandError) -> bool:
+        """
+        Check the voice channel and send the error message.
+
+        Args:
+            interaction:
+            error:
+
+        Returns:
+
+        """
         if isinstance(error, UserNotInVoiceChannel):
             await self.__send_error(interaction, 'Devi essere connesso a un canale vocale')
         elif isinstance(error, BotNotInVoiceChannel):
@@ -274,27 +316,37 @@ class Music(ext.commands.Cog):
         return False
 
     @play.error
-    @volume.error
-    @seek.error
     async def play_error(self, interaction: Interaction, error: ext.commands.CommandError):
+        """
+        Error handler for the play command.
+
+        Args:
+            interaction:
+            error:
+
+        Returns:
+
+        """
         if not await self.__check_channel(interaction, error):
             pass
-        elif isinstance(error, TrackNotFoundError):
+        elif isinstance(error, TrackNotFound):
             await self.__send_error(interaction, 'Canzone non trovata')
-        elif isinstance(error, ValueError):
-            await self.__send_error(interaction, 'Valore non valido')
-        elif isinstance(error, InvalidSeekTime):
-            await self.__send_error(interaction, 'Posizione non valida')
-        elif isinstance(error, TrackNotSeekable):
-            await self.__send_error(interaction, 'Non puoi cambiare la posizione di questa canzone')
-        elif isinstance(error, InvalidFormat):
-            await self.__send_error(interaction, 'Formato non valido')
         else:
             print(error)
             await self.__send_error(interaction, 'Errore sconosciuto')
 
     @leave.error
     async def leave_error(self, interaction: Interaction, error: ext.commands.CommandError):
+        """
+        Error handler for the leave command.
+
+        Args:
+            interaction:
+            error:
+
+        Returns:
+
+        """
         if not await self.__check_channel(interaction, error):
             pass
         else:
@@ -303,6 +355,16 @@ class Music(ext.commands.Cog):
 
     @join.error
     async def join_error(self, interaction: Interaction, error: ext.commands.CommandError):
+        """
+        Error handler for the join command.
+
+        Args:
+            interaction:
+            error:
+
+        Returns:
+
+        """
         if isinstance(error, UserNotInVoiceChannel):
             await self.__send_error(interaction, 'Devi essere connesso a un canale vocale')
         elif isinstance(error, BotAlreadyInVoiceChannel):
@@ -311,23 +373,17 @@ class Music(ext.commands.Cog):
             print(error)
             await self.__send_error(interaction, 'Errore sconosciuto')
 
-    # --- QUEUE ERROR HANDLING --- #
-
-
-    @remove.error
-    @swap.error
-    async def shuffle_error(self, interaction: Interaction, error: ext.commands.CommandError):
-        if not await self.__check_channel(interaction, error):
-            pass
-        elif isinstance(error, QueueEmpty):
-            await self.__send_error(interaction, 'Coda vuota')
-        elif isinstance(error, IndexError):
-            await self.__send_error(interaction, 'Indice non valido')
-        else:
-            print(error)
-            await self.__send_error(interaction, 'Errore sconosciuto')
 
 async def setup(bot: ext.commands.Bot):
+    """
+    Set up the Music cog.
+
+    Args:
+        bot:
+
+    Returns:
+
+    """
     await bot.add_cog(
         Music(bot),
         guilds=[

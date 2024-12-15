@@ -2,7 +2,7 @@ from discord import Interaction
 from discord._types import ClientT
 from discord.ui import Button, View, Select, Item
 from typing import Callable, Coroutine, Any, Optional
-from src.voice.VoiceGuild import VoiceState
+from src.voice.guild_voice_state import GuildVoiceState
 
 import wavelink
 import discord
@@ -13,11 +13,11 @@ from src.utils.utils import convert_time
 class Tracks(Select):
     def __init__(
             self,
-            voice_state: VoiceState,
+            voice_state: GuildVoiceState,
             interaction: discord.Interaction,
             tracks: list[wavelink.Playable]):
 
-        self.__voice_state: VoiceState = voice_state
+        self.__voice_state: GuildVoiceState = voice_state
         self.__interaction: discord.Interaction = interaction
         self.__tracks: list[wavelink.Playable] = tracks
         self.__embed: EmbedFactory = EmbedFactory()

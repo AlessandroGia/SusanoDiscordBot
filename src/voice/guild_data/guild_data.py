@@ -1,9 +1,8 @@
 from typing import Optional
 
 import discord
-import wavelink
 
-from src.voice.voice_state.VoicePlayer import VoicePlayer
+from src.voice.voice_state.voice_player import VoicePlayer
 
 
 class GuildMusicData:

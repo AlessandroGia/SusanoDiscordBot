@@ -1,6 +1,10 @@
 from discord.app_commands import AppCommandError
 
 
+class TrackNotFound(AppCommandError):
+    pass
+
+
 class IllegalState(AppCommandError):
     pass
 
@@ -29,4 +33,3 @@ class NoCurrentTrack(AppCommandError):
 
 
 # QUEUE
-

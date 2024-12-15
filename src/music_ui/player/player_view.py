@@ -1,26 +1,28 @@
 from typing import Any
 
-import discord.ui
+
 from discord import Interaction
 from discord.ui import Button, View, Item
 
 
 from src.exceptions.QueueException import *
-from src.exceptions.VoiceChannelExceptions import *
-from src.exceptions.PlayerExceptions import *
+from src.exceptions.voice_channel_exceptions import *
+from src.exceptions.player_exceptions import *
 
-from src.ui.player.items.buttons.back import Back
-from src.ui.player.items.buttons.loop import Loop
-from src.ui.player.items.buttons.resume_pause import ResumePause
-from src.ui.player.items.buttons.queue import Queue
-from src.ui.player.items.buttons.reset import Reset
-from src.ui.player.items.buttons.skip import Skip
+from src.music_ui.player.items.buttons.back import Back
+from src.music_ui.player.items.buttons.loop import Loop
+from src.music_ui.player.items.buttons.resume_pause import ResumePause
+from src.music_ui.player.items.buttons.queue import Queue
+from src.music_ui.player.items.buttons.reset import Reset
+from src.music_ui.player.items.buttons.skip import Skip
 
 from src.utils.embed import EmbedFactory
 
+from src.voice.guild_voice_state import GuildVoiceState
+
 
 class PlayerView(View):
-    def __init__(self, voice_state, guild_id: int):
+    def __init__(self, voice_state: GuildVoiceState, guild_id: int):
         super().__init__(timeout=None)
         self.__embed = EmbedFactory()
 

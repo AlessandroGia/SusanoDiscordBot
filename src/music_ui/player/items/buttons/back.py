@@ -3,11 +3,11 @@ from discord.ui import Button
 
 import discord
 
-from src.voice.VoiceGuild import VoiceState
+from src.voice.guild_voice_state import GuildVoiceState
 
 
 class Back(Button):
-    def __init__(self, voice_state: VoiceState, row: int):
+    def __init__(self, voice_state: GuildVoiceState, row: int):
         self.__voice_state = voice_state
 
         super().__init__(
