@@ -45,7 +45,9 @@ class Music(ext.commands.Cog):
         Returns:
 
         """
-        self.__voice_state.server_clean_up()
+        print(f"Websocket chiuso: {payload.code} {payload.reason}")
+        if check_player(payload.player):
+            await self.__voice_state.guild_clean_up(payload.player.guild.id)
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload) -> None:
@@ -200,18 +202,27 @@ class Music(ext.commands.Cog):
         name='join',
         description='Fa entrare il bot nel canale vocale'
     )
+    @app_commands.describe(
+        auto_queue='Abilita la modalità auto-queue'
+    )
+    @app_commands.choices(
+        auto_queue=[
+            app_commands.Choice(name='Si', value=1),
+        ]
+    )
     @check_voice_channel()
-    async def join(self, interaction: Interaction):
+    async def join(self, interaction: Interaction, auto_queue: app_commands.Choice[int] = 0):
         """
         Command to make the bot join the voice channel.
 
         Args:
             interaction:
+            auto_queue:
 
         Returns:
 
         """
-        await self.__voice_state.join(interaction)
+        await self.__voice_state.join(interaction, inactive_time=180, auto_queue=bool(auto_queue))
         await self.__send_message(
             interaction,
             f'Connesso al canale vocale: {interaction.user.voice.channel.name}',

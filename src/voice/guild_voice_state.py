@@ -16,15 +16,14 @@ class GuildVoiceState:
         self.__guild_state: dict = {}
         self.__embed = EmbedFactory()
 
-    def server_clean_up(self) -> None:
-        for guild_id in self.__guild_state.keys():
-            if (guild_state := self.__get_guild_state(guild_id)) and not guild_state.voice_player.is_connected():
-                if guild_state.last_view and not guild_state.last_view.is_finished():
-                    if guild_state.last_mess:
-                        guild_state.last_mess.edit(view=None)
-                    guild_state.last_view.stop()
+    async def guild_clean_up(self, guild_id):
+        if guild_state := self.__get_guild_state(guild_id):
+            if guild_state.last_view and not guild_state.last_view.is_finished():
+                if guild_state.last_mess:
+                    await guild_state.last_mess.edit(view=None)
+                guild_state.last_view.stop()
+            self.__del_guild_state(guild_id)
 
-                self.__del_guild_state(guild_id)
 
     def __del_guild_state(self, guild_id: int) -> None:
         self.__guild_state.pop(guild_id)
@@ -191,7 +190,7 @@ class GuildVoiceState:
 
         if guild_state.voice_player.get_queue_mode() != wavelink.QueueMode.normal:
             guild_state.voice_player.set_queue_mode(wavelink.QueueMode.normal)
-        if guild_state.voice_player.get_auto_play_mode() != wavelink.AutoPlayMode.partial:
+        if guild_state.auto_queue and guild_state.voice_player.get_auto_play_mode() != wavelink.AutoPlayMode.partial:
             guild_state.voice_player.set_auto_play_mode(wavelink.AutoPlayMode.partial)
             print(guild_state.voice_player.get_auto_play_mode())
 
@@ -200,30 +199,32 @@ class GuildVoiceState:
     ## ----------------- ##
     ## ----------------- ##
 
-    async def join(self, interaction: Interaction, inactive_time: int = 180) -> None:
+    async def join(self, interaction: Interaction, inactive_time: int = 180, auto_queue: bool = False) -> None:
         player: wavelink.Player = await interaction.user.voice.channel.connect(
             self_deaf=True,
             cls=wavelink.Player,
         )
         player.inactive_timeout = inactive_time
-        player.autoplay = wavelink.AutoPlayMode.enabled
+        player.autoplay = wavelink.AutoPlayMode.partial if auto_queue else wavelink.AutoPlayMode.partial
+
         self.__set_guild_state(
             interaction.guild_id,
             GuildMusicData(
                 interaction.channel_id,
-                VoicePlayer(player)
+                VoicePlayer(player),
+                auto_queue
             )
         )
 
     async def leave(self, interaction: Interaction) -> None:
         guild_state = self.__ensure_guild_state(interaction.guild_id)
-
+        await self.guild_clean_up(interaction.guild_id)
         await guild_state.voice_player.leave()
 
     def switch_auto_play_mode(self, interaction: Interaction) -> None:
         guild_state = self.__ensure_guild_state(interaction.guild_id)
 
-        if guild_state.voice_player.get_auto_play_mode() == wavelink.AutoPlayMode.partial:
+        if guild_state.auto_queue and guild_state.voice_player.get_auto_play_mode() == wavelink.AutoPlayMode.partial:
             guild_state.voice_player.set_auto_play_mode(wavelink.AutoPlayMode.enabled)
 
     def position(self, interaction: Interaction) -> int:
