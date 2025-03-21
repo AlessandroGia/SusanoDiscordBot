@@ -7,7 +7,7 @@ RUN pip install poetry
 COPY pyproject.toml /app/
 
 
-RUN poetry install
+RUN poetry install --without dev
 
 COPY src ./src
 COPY main.py .
