@@ -34,6 +34,12 @@ class Music(ext.commands.Cog):
         self.__voice_state = GuildVoiceState()
         self.__embed = EmbedFactory()
 
+    async def __clear_last_view(self, _id: int):
+        if last_view := self.__voice_state.get_last_view(_id):
+            if last_mess := self.__voice_state.get_last_mess(_id):
+                await last_mess.edit(view=None)
+            last_view.stop()
+
     @commands.Cog.listener()
     async def on_wavelink_websocket_closed(self, payload: wavelink.WebsocketClosedEventPayload):
         """
@@ -113,10 +119,7 @@ class Music(ext.commands.Cog):
         """
         if check_player(payload.player):
 
-            if last_view := self.__voice_state.get_last_view(payload.player.guild.id):
-                if last_mess := self.__voice_state.get_last_mess(payload.player.guild.id):
-                    await last_mess.edit(view=None)
-                last_view.stop()
+            await self.__clear_last_view(payload.player.guild.id)
 
             channel: discord.TextChannel = await self.__bot.fetch_channel(
                 self.__voice_state.get_channel_id(payload.player.guild.id)
@@ -156,6 +159,9 @@ class Music(ext.commands.Cog):
 
         """
         if check_player(player):
+
+            await self.__clear_last_view(player.guild.id)
+
             channel: discord.TextChannel = await self.__bot.fetch_channel(
                 self.__voice_state.get_channel_id(player.guild.id)
             )
