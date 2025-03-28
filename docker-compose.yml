@@ -9,7 +9,7 @@ services:
       - lavalink-net
 
   lavalink:
-    image: ghcr.io/lavalink-devs/lavalink:latest
+    image: ghcr.io/lavalink-devs/lavalink:4.0.8
     container_name: lavalink
     restart: unless-stopped
     environment:
