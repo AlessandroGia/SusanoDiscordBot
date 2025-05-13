@@ -3,6 +3,7 @@ services:
   bot:
     build: .
     container_name: bot
+    restart: unless-stopped
     depends_on:
       - lavalink
     networks:
